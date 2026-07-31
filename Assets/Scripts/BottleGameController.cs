@@ -86,6 +86,12 @@ namespace BottleBattle
             LoadLevel(Mathf.Clamp(savedLevel, 1, FinalLevel));
         }
 
+        public void BeginLevel(int level)
+        {
+            enabled = true;
+            LoadLevel(Mathf.Clamp(level, 1, FinalLevel));
+        }
+
         private void Awake()
         {
             Application.targetFrameRate = 60;
@@ -656,9 +662,10 @@ namespace BottleBattle
                 PlayerPrefs.SetInt(GetBestMovesKey(currentLevel), bestMoveCount);
             }
 
+            int unlockedLevel = PlayerPrefs.GetInt(SavedLevelKey, 1);
             if (currentLevel < FinalLevel)
             {
-                PlayerPrefs.SetInt(SavedLevelKey, currentLevel + 1);
+                PlayerPrefs.SetInt(SavedLevelKey, Mathf.Max(unlockedLevel, currentLevel + 1));
             }
             else
             {
@@ -1017,13 +1024,13 @@ namespace BottleBattle
 
         private void ReturnToMenu()
         {
-            MainMenuController menu = GetComponent<MainMenuController>();
-            if (menu == null)
+            LevelSelectController levelSelect = GetComponent<LevelSelectController>();
+            if (levelSelect == null)
             {
-                menu = gameObject.AddComponent<MainMenuController>();
+                levelSelect = gameObject.AddComponent<LevelSelectController>();
             }
 
-            menu.enabled = true;
+            levelSelect.Begin();
             enabled = false;
         }
 

@@ -28,7 +28,6 @@ namespace BottleBattle
         private GUIStyle topBarText;
         private GUIStyle buttonText;
         private GUIStyle secondaryButtonText;
-        private GUIStyle smallButtonText;
         private GUIStyle bottleBrandText;
         private GUIStyle bottleNumberText;
         private GUIStyle bottleFooterText;
@@ -62,7 +61,6 @@ namespace BottleBattle
         public event Action PlayRequested;
         public event Action OnlinePlayRequested;
         public event Action DailyPuzzleRequested;
-        public event Action LevelsRequested;
         public event Action SettingsRequested;
 
         public int ShowcaseBottleCount => showcaseBottleCount;
@@ -410,7 +408,7 @@ namespace BottleBattle
                     buttonText))
             {
                 PlayRequested?.Invoke();
-                StartGame();
+                OpenLevelSelect();
             }
 
             if (DrawRoundedButton(
@@ -439,16 +437,6 @@ namespace BottleBattle
                 ShowStatus("Daily puzzle selected");
             }
 
-            if (DrawRoundedButton(
-                    new Rect(317f, 1592f, 446f, 106f),
-                    "▥   LEVELS",
-                    Cream,
-                    CreamDark,
-                    smallButtonText))
-            {
-                LevelsRequested?.Invoke();
-                ShowStatus("Levels selected");
-            }
         }
 
         private void DrawStatus()
@@ -468,15 +456,15 @@ namespace BottleBattle
             statusUntil = Time.unscaledTime + 2.2f;
         }
 
-        private void StartGame()
+        private void OpenLevelSelect()
         {
-            BottleGameController game = FindAnyObjectByType<BottleGameController>();
-            if (game == null)
+            LevelSelectController levelSelect = FindAnyObjectByType<LevelSelectController>();
+            if (levelSelect == null)
             {
-                game = gameObject.AddComponent<BottleGameController>();
+                levelSelect = gameObject.AddComponent<LevelSelectController>();
             }
 
-            game.Begin();
+            levelSelect.Begin();
             enabled = false;
         }
 
@@ -631,7 +619,6 @@ namespace BottleBattle
             topBarText = CreateTextStyle(40, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             buttonText = CreateTextStyle(52, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             secondaryButtonText = CreateTextStyle(39, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
-            smallButtonText = CreateTextStyle(36, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleBrandText = CreateTextStyle(12, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleNumberText = CreateTextStyle(30, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleFooterText = CreateTextStyle(10, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
