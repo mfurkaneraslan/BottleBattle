@@ -52,7 +52,6 @@ namespace BottleBattle
         private GUIStyle subtitleStyle;
         private GUIStyle correctCountStyle;
         private GUIStyle buttonStyle;
-        private GUIStyle smallButtonStyle;
         private GUIStyle bottleBrandStyle;
         private GUIStyle bottleNumberStyle;
         private GUIStyle bottleFooterStyle;
@@ -302,8 +301,6 @@ namespace BottleBattle
                 $"{currentLevel} / {FinalLevel}",
                 subtitleStyle);
 
-            DrawRoundedPanel(new Rect(894f, 66f, 132f, 76f), Navy, Darken(Navy, 0.16f), 28);
-            GUI.Label(new Rect(902f, 77f, 116f, 50f), $"{currentOrder.Count}", smallButtonStyle);
         }
 
         private void DrawPuzzle()
@@ -747,13 +744,20 @@ namespace BottleBattle
 
         private static int CalculateStars(int moves, int minimum)
         {
-            int extraMoves = Mathf.Max(0, moves - minimum);
-            if (extraMoves <= 1)
+            int threeStarLimit = minimum >= 8
+                ? Mathf.CeilToInt(minimum * 1.5f)
+                : minimum + 4;
+
+            if (moves <= threeStarLimit)
             {
                 return 3;
             }
 
-            if (extraMoves <= 4)
+            int twoStarLimit = minimum > 4
+                ? minimum * 2
+                : minimum + 8;
+
+            if (moves <= twoStarLimit)
             {
                 return 2;
             }
@@ -1181,7 +1185,6 @@ namespace BottleBattle
             subtitleStyle = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             correctCountStyle = CreateTextStyle(42, Coral, FontStyle.Bold, TextAnchor.MiddleCenter);
             buttonStyle = CreateTextStyle(46, White, FontStyle.Bold, TextAnchor.MiddleCenter);
-            smallButtonStyle = CreateTextStyle(34, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleBrandStyle = CreateTextStyle(14, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleNumberStyle = CreateTextStyle(38, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleFooterStyle = CreateTextStyle(12, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
