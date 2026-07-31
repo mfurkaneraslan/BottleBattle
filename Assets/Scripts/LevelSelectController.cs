@@ -74,7 +74,7 @@ namespace BottleBattle
                 pointerReleaseFrame = -1;
             }
 
-            Vector2 pointer = GUI.matrix.inverse.MultiplyPoint(currentEvent.mousePosition);
+            Vector2 pointer = currentEvent.mousePosition;
             bool overGrid = pointer.x >= 38f && pointer.x <= 1042f &&
                             pointer.y >= 255f && pointer.y <= 1845f;
 
