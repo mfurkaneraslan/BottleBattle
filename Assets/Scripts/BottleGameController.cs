@@ -282,7 +282,7 @@ namespace BottleBattle
         {
             if (DrawRoundedButton(
                     new Rect(48f, 55f, 124f, 104f),
-                    "‹",
+                    "<",
                     Cream,
                     CreamDark,
                     headerStyle))
@@ -1157,9 +1157,17 @@ namespace BottleBattle
 
         private void CreateStyles()
         {
-            uiFont = Font.CreateDynamicFontFromOSFont(
-                new[] { "Segoe UI", "Arial", "Liberation Sans" },
-                32);
+            uiFont = Resources.Load<Font>("Fonts/Inter-Regular");
+            if (uiFont == null)
+            {
+                uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            }
+            if (uiFont == null)
+            {
+                uiFont = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Segoe UI", "Arial", "Liberation Sans" },
+                    32);
+            }
 
             headerStyle = CreateTextStyle(58, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             titleStyle = CreateTextStyle(62, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);

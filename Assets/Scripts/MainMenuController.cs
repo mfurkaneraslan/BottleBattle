@@ -614,9 +614,17 @@ namespace BottleBattle
 
         private void CreateStyles()
         {
-            uiFont = Font.CreateDynamicFontFromOSFont(
-                new[] { "Segoe UI", "Arial", "Liberation Sans" },
-                32);
+            uiFont = Resources.Load<Font>("Fonts/Inter-Regular");
+            if (uiFont == null)
+            {
+                uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            }
+            if (uiFont == null)
+            {
+                uiFont = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Segoe UI", "Arial", "Liberation Sans" },
+                    32);
+            }
 
             titleCoral = CreateTextStyle(116, Coral, FontStyle.Bold, TextAnchor.MiddleCenter);
             titleNavy = CreateTextStyle(112, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
