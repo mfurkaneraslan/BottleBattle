@@ -75,6 +75,7 @@ namespace BottleBattleEditor
         {
             string indexPath = Path.Combine(WebOutputDirectory, "index.html");
             string index = File.ReadAllText(indexPath);
+            string cacheKey = System.DateTime.UtcNow.ToString("yyyyMMddHHmmss");
             index = index.Replace(
                 "<title>Unity Web Player | Bottle Battle</title>",
                 "<meta name=\"viewport\" content=\"width=device-width, height=device-height, initial-scale=1.0, user-scalable=no\">\n" +
@@ -86,6 +87,18 @@ namespace BottleBattleEditor
                 "    <meta property=\"og:image\" content=\"https://mfurkaneraslan.github.io/BottleBattle/og.png\">\n" +
                 "    <meta name=\"twitter:card\" content=\"summary_large_image\">\n" +
                 "    <title>Bottle Battle</title>");
+            index = index.Replace(
+                "var loaderUrl = buildUrl + \"/WebGL.loader.js\";",
+                $"var loaderUrl = buildUrl + \"/WebGL.loader.js?v={cacheKey}\";");
+            index = index.Replace(
+                "dataUrl: buildUrl + \"/WebGL.data\",",
+                $"dataUrl: buildUrl + \"/WebGL.data?v={cacheKey}\",");
+            index = index.Replace(
+                "frameworkUrl: buildUrl + \"/WebGL.framework.js\",",
+                $"frameworkUrl: buildUrl + \"/WebGL.framework.js?v={cacheKey}\",");
+            index = index.Replace(
+                "codeUrl: buildUrl + \"/WebGL.wasm\",",
+                $"codeUrl: buildUrl + \"/WebGL.wasm?v={cacheKey}\",");
             File.WriteAllText(indexPath, index);
 
             string stylePath = Path.Combine(WebOutputDirectory, "TemplateData", "style.css");
