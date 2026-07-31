@@ -37,6 +37,9 @@ namespace BottleBattle
         private Vector2 scrollPosition;
         private float touchDragDistance;
         private bool touchScrolling;
+        private bool mouseScrolling;
+        private float lastMouseY;
+        private int mouseReleaseFrame = -1;
 
         public void Begin()
         {
@@ -59,23 +62,62 @@ namespace BottleBattle
 
         private void Update()
         {
-            if (Input.touchCount == 0)
+            if (Input.touchCount > 0)
             {
-                if (touchScrolling) touchDragDistance = 0f;
-                touchScrolling = false;
+                HandleTouchScroll(Input.GetTouch(0));
                 return;
             }
 
-            Touch touch = Input.GetTouch(0);
+            if (mouseReleaseFrame >= 0 && Time.frameCount > mouseReleaseFrame)
+            {
+                touchDragDistance = 0f;
+                mouseReleaseFrame = -1;
+            }
+
+            Vector2 mousePosition = GetDesignPosition(Input.mousePosition);
+            bool overGrid = mousePosition.x >= 38f && mousePosition.x <= 1042f &&
+                            mousePosition.y >= 255f && mousePosition.y <= 1845f;
+
+            if (overGrid && Mathf.Abs(Input.mouseScrollDelta.y) > 0.01f)
+            {
+                scrollPosition.y = Mathf.Clamp(
+                    scrollPosition.y - Input.mouseScrollDelta.y * 120f,
+                    0f,
+                    2628f);
+            }
+
+            if (Input.GetMouseButtonDown(0) && overGrid)
+            {
+                mouseScrolling = true;
+                lastMouseY = Input.mousePosition.y;
+                touchDragDistance = 0f;
+            }
+            else if (mouseScrolling && Input.GetMouseButton(0))
+            {
+                float scale = GetDesignScale();
+                float delta = (Input.mousePosition.y - lastMouseY) / scale;
+                scrollPosition.y = Mathf.Clamp(scrollPosition.y + delta, 0f, 2628f);
+                touchDragDistance += Mathf.Abs(delta);
+                lastMouseY = Input.mousePosition.y;
+            }
+            else if (mouseScrolling && Input.GetMouseButtonUp(0))
+            {
+                mouseScrolling = false;
+                mouseReleaseFrame = Time.frameCount;
+            }
+        }
+
+        private void HandleTouchScroll(Touch touch)
+        {
+            Vector2 designPosition = GetDesignPosition(touch.position);
+            bool overGrid = designPosition.x >= 38f && designPosition.x <= 1042f &&
+                            designPosition.y >= 255f && designPosition.y <= 1845f;
             Rect safeArea = Screen.safeArea;
             float scale = Mathf.Min(safeArea.width / DesignWidth, safeArea.height / DesignHeight);
-            float safeTop = Screen.height - safeArea.yMax;
-            float offsetY = safeTop + (safeArea.height - DesignHeight * scale) * 0.5f;
-            float designY = (Screen.height - touch.position.y - offsetY) / scale;
 
             if (touch.phase == TouchPhase.Began)
             {
-                touchScrolling = designY >= 255f && designY <= 1845f;
+                touchScrolling = overGrid;
                 touchDragDistance = 0f;
             }
             else if (touchScrolling && touch.phase == TouchPhase.Moved)
@@ -84,6 +126,26 @@ namespace BottleBattle
                 scrollPosition.y = Mathf.Clamp(scrollPosition.y + delta, 0f, 2628f);
                 touchDragDistance += Mathf.Abs(delta);
             }
+        }
+
+        private static float GetDesignScale()
+        {
+            Rect safeArea = Screen.safeArea;
+            return Mathf.Min(safeArea.width / DesignWidth, safeArea.height / DesignHeight);
+        }
+
+        private static Vector2 GetDesignPosition(Vector2 screenPosition)
+        {
+            Rect safeArea = Screen.safeArea;
+            float scale = GetDesignScale();
+            float contentWidth = DesignWidth * scale;
+            float contentHeight = DesignHeight * scale;
+            float safeTop = Screen.height - safeArea.yMax;
+            float offsetX = safeArea.x + (safeArea.width - contentWidth) * 0.5f;
+            float offsetY = safeTop + (safeArea.height - contentHeight) * 0.5f;
+            return new Vector2(
+                (screenPosition.x - offsetX) / scale,
+                (Screen.height - screenPosition.y - offsetY) / scale);
         }
 
         private void OnDestroy()
