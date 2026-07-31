@@ -2,6 +2,8 @@
 
 A mobile logic puzzle game built with Unity 6.3 LTS.
 
+Play the WebGL version: https://mfurkaneraslan.github.io/BottleBattle/
+
 ## First launch
 
 1. Sign in to Unity Hub and activate a free Personal license.
