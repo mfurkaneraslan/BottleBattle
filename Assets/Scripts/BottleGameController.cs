@@ -14,6 +14,7 @@ namespace BottleBattle
         private const float DesignHeight = 1920f;
         private const int FinalLevel = 100;
         private const string SavedLevelKey = "BottleOrder.CurrentLevel";
+        private const string TutorialCompletedKey = "BottleBattle.TutorialCompleted";
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
@@ -67,6 +68,10 @@ namespace BottleBattle
         private GUIStyle depthPopupStatStyle;
         private GUIStyle depthPopupSmallStyle;
         private GUIStyle depthPopupLevelStyle;
+        private GUIStyle tutorialTitleStyle;
+        private GUIStyle tutorialMessageStyle;
+        private GUIStyle tutorialArrowStyle;
+        private GUIStyle tutorialHintStyle;
 
         private int currentLevel;
         private int moveCount;
@@ -77,6 +82,10 @@ namespace BottleBattle
         private Vector2 dragPosition;
         private bool completed;
         private bool allLevelsCompleted;
+        private bool tutorialActive;
+        private int correctBeforeSwap;
+        private string tutorialMessage = string.Empty;
+        private float completionPopupReadyAt;
 
         public void Begin()
         {
@@ -119,11 +128,14 @@ namespace BottleBattle
             currentLevel = Mathf.Clamp(level, 1, FinalLevel);
             completed = false;
             allLevelsCompleted = false;
+            completionPopupReadyAt = 0f;
             moveCount = 0;
             minimumMoves = 0;
             earnedStars = 0;
             bestMoveCount = PlayerPrefs.GetInt(GetBestMovesKey(currentLevel), 0);
             draggedIndex = -1;
+            tutorialActive = currentLevel <= 3 && PlayerPrefs.GetInt(TutorialCompletedKey, 0) == 0;
+            tutorialMessage = GetTutorialIntro(currentLevel);
             currentOrder.Clear();
             targetOrder.Clear();
 
@@ -259,9 +271,13 @@ namespace BottleBattle
             DrawBackground();
             DrawHeader();
             DrawPuzzle();
+            if (tutorialActive)
+            {
+                DrawTutorial();
+            }
             HandleDrag(Event.current);
             DrawBottomAction();
-            if (completed)
+            if (completed && Time.unscaledTime >= completionPopupReadyAt)
             {
                 DrawDepthCompletionPopup();
             }
@@ -600,6 +616,7 @@ namespace BottleBattle
 
                     draggedIndex = index;
                     dragPosition = guiEvent.mousePosition;
+                    correctBeforeSwap = GetCorrectCount();
                     guiEvent.Use();
                     break;
                 }
@@ -617,6 +634,7 @@ namespace BottleBattle
                     (currentOrder[draggedIndex], currentOrder[droppedOnIndex]) =
                         (currentOrder[droppedOnIndex], currentOrder[draggedIndex]);
                     moveCount++;
+                    UpdateTutorialFeedback(GetCorrectCount() - correctBeforeSwap);
                 }
 
                 draggedIndex = -1;
@@ -644,6 +662,15 @@ namespace BottleBattle
             if (!completed)
             {
                 return;
+            }
+
+            if (tutorialActive)
+            {
+                completionPopupReadyAt = Time.unscaledTime + 1.7f;
+                if (currentLevel == 3)
+                {
+                    PlayerPrefs.SetInt(TutorialCompletedKey, 1);
+                }
             }
 
             earnedStars = CalculateStars(moveCount, minimumMoves);
@@ -775,9 +802,75 @@ namespace BottleBattle
             return $"BottleOrder.Level.{level}.BestMoves";
         }
 
+        private static string GetTutorialIntro(int level)
+        {
+            return level switch
+            {
+                1 => "DRAG THE FIRST HIGHLIGHTED BOTTLE ONTO THE OTHER ONE TO SWAP THEM.",
+                2 => "AFTER EACH SWAP, WATCH HOW THE CORRECT COUNT CHANGES.",
+                3 => "USE EACH CORRECT RESULT AS A CLUE UNTIL YOU FIND THE FULL ORDER.",
+                _ => string.Empty
+            };
+        }
+
+        private void UpdateTutorialFeedback(int correctDelta)
+        {
+            if (!tutorialActive)
+            {
+                return;
+            }
+
+            tutorialMessage = correctDelta switch
+            {
+                2 => "+2 CORRECT: BOTH SWAPPED BOTTLES ARE NOW IN THE RIGHT PLACE.",
+                1 => "+1 CORRECT: ONE OF THE TWO SWAPPED BOTTLES IS NOW RIGHT.",
+                0 => "NO CHANGE: BOTH SWAPPED BOTTLES ARE STILL IN THE WRONG PLACE.",
+                _ => "CORRECT WENT DOWN: TRY A DIFFERENT PAIR OF BOTTLES."
+            };
+        }
+
+        private void DrawTutorial()
+        {
+            if (!completed && currentLevel == 1 && upperBottleRects.Count >= 2)
+            {
+                for (int index = 0; index < 2; index++)
+                {
+                    Rect bottle = upperBottleRects[index];
+                    DrawRoundedPanel(
+                        new Rect(bottle.x - 12f, bottle.y - 12f, bottle.width + 24f, bottle.height + 24f),
+                        new Color(Gold.r, Gold.g, Gold.b, 0.07f),
+                        Gold,
+                        28);
+                }
+
+                Rect second = upperBottleRects[1];
+                GUI.Label(
+                    new Rect(second.xMax + 8f, second.center.y - 34f, 200f, 68f),
+                    "<  DRAG",
+                    tutorialArrowStyle);
+            }
+            else if (!completed && currentLevel >= 2)
+            {
+                DrawRoundedPanel(
+                    new Rect(300f, 278f, 480f, 72f),
+                    new Color(Gold.r, Gold.g, Gold.b, 0.06f),
+                    Gold,
+                    24);
+                GUI.Label(new Rect(782f, 286f, 205f, 50f), "<  WATCH", tutorialHintStyle);
+            }
+
+            Rect panel = new(105f, 1515f, 870f, 145f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(new Rect(panel.x + 7f, panel.y + 9f, panel.width, panel.height), Shadow, Shadow, 30);
+            GUI.color = White;
+            DrawRoundedPanel(panel, Navy, Gold, 30);
+            GUI.Label(new Rect(135f, 1530f, 810f, 34f), $"TUTORIAL  {currentLevel} / 3", tutorialTitleStyle);
+            GUI.Label(new Rect(145f, 1565f, 790f, 78f), tutorialMessage, tutorialMessageStyle);
+        }
+
         private void DrawBottomAction()
         {
-            if (completed)
+            if (completed || tutorialActive)
             {
                 return;
             }
@@ -1200,6 +1293,11 @@ namespace BottleBattle
             depthPopupStatStyle = CreateTextStyle(35, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             depthPopupSmallStyle = CreateTextStyle(27, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             depthPopupLevelStyle = CreateTextStyle(32, DeepBlue, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialTitleStyle = CreateTextStyle(22, Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialMessageStyle = CreateTextStyle(25, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialMessageStyle.wordWrap = true;
+            tutorialArrowStyle = CreateTextStyle(31, Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialHintStyle = CreateTextStyle(22, Gold, FontStyle.Bold, TextAnchor.MiddleLeft);
         }
 
         private GUIStyle CreateTextStyle(int size, Color color, FontStyle fontStyle, TextAnchor alignment)
