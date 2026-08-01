@@ -33,6 +33,26 @@
     </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
+      canvas.tabIndex = 0;
+      var activeTouchId = null;
+      function forwardTouchAsMouse(event, mouseType, buttons) {
+        var touch = null;
+        for (var index = 0; index < event.changedTouches.length; index++) {
+          var candidate = event.changedTouches[index];
+          if (activeTouchId === null || candidate.identifier === activeTouchId) { touch = candidate; break; }
+        }
+        if (!touch) return;
+        if (activeTouchId === null) activeTouchId = touch.identifier;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        canvas.dispatchEvent(new MouseEvent(mouseType, { bubbles: true, cancelable: true, view: window, clientX: touch.clientX, clientY: touch.clientY, screenX: touch.screenX, screenY: touch.screenY, button: 0, buttons: buttons }));
+        if (mouseType === 'mouseup') activeTouchId = null;
+      }
+      canvas.addEventListener('touchstart', function(event) { canvas.focus(); forwardTouchAsMouse(event, 'mousedown', 1); }, { passive: false });
+      canvas.addEventListener('touchmove', function(event) { forwardTouchAsMouse(event, 'mousemove', 1); }, { passive: false });
+      canvas.addEventListener('touchend', function(event) { forwardTouchAsMouse(event, 'mouseup', 0); }, { passive: false });
+      canvas.addEventListener('touchcancel', function(event) { forwardTouchAsMouse(event, 'mouseup', 0); }, { passive: false });
+      canvas.addEventListener('pointerdown', function() { canvas.focus(); });
 
       // Shows a temporary message banner/ribbon for a few seconds, or
       // a permanent error message on top of the canvas if type=='error'.
@@ -60,12 +80,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL.loader.js?v=20260731223610";
+      var loaderUrl = buildUrl + "/WebGL.loader.js?v=20260801210158";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebGL.data?v=20260731223610",
-        frameworkUrl: buildUrl + "/WebGL.framework.js?v=20260731223610",
-        codeUrl: buildUrl + "/WebGL.wasm?v=20260731223610",
+        dataUrl: buildUrl + "/WebGL.data?v=20260801210158",
+        frameworkUrl: buildUrl + "/WebGL.framework.js?v=20260801210158",
+        codeUrl: buildUrl + "/WebGL.wasm?v=20260801210158",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Bottle Battle Studio",
         productName: "Bottle Battle",
