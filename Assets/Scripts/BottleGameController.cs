@@ -14,7 +14,7 @@ namespace BottleBattle
         private const float DesignHeight = 1920f;
         private const int FinalLevel = 100;
         private const string SavedLevelKey = "BottleOrder.CurrentLevel";
-        private const string TutorialCompletedKey = "BottleBattle.TutorialCompleted";
+        private const string TutorialCompletedKey = "BottleBattle.TutorialCompletedV2";
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
