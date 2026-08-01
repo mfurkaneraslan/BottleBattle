@@ -77,6 +77,9 @@ namespace BottleBattleEditor
             string index = File.ReadAllText(indexPath);
             string cacheKey = System.DateTime.UtcNow.ToString("yyyyMMddHHmmss");
             index = index.Replace(
+                "href=\"TemplateData/style.css\"",
+                $"href=\"TemplateData/style.css?v={cacheKey}\"");
+            index = index.Replace(
                 "var canvas = document.querySelector(\"#unity-canvas\");",
                 "var canvas = document.querySelector(\"#unity-canvas\");\n" +
                 "      canvas.tabIndex = 0;\n" +
