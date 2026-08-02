@@ -602,7 +602,7 @@ namespace BottleBattle
                     buttonText))
             {
                 OnlinePlayRequested?.Invoke();
-                ShowStatus("Online matchmaking coming next");
+                OpenOnlineMatch();
             }
 
             GUI.color = Lime;
@@ -660,6 +660,18 @@ namespace BottleBattle
             }
 
             game.BeginDailyPuzzle();
+            enabled = false;
+        }
+
+        private void OpenOnlineMatch()
+        {
+            OnlineMatchController online = FindAnyObjectByType<OnlineMatchController>();
+            if (online == null)
+            {
+                online = gameObject.AddComponent<OnlineMatchController>();
+            }
+
+            online.Begin();
             enabled = false;
         }
 

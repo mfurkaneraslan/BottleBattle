@@ -96,6 +96,9 @@ namespace BottleBattle
         private bool tutorialActive;
         private bool dailyPuzzleMode;
         private bool dailyRewardAlreadyClaimed;
+        private bool onlinePuzzleMode;
+        private bool onlineMatchFinished;
+        private bool onlinePlayerWon;
         private bool hintPopupOpen;
         private bool singleBottleHintPurchased;
         private bool shapeHintPurchased;
@@ -109,6 +112,7 @@ namespace BottleBattle
         private string hintMessage = string.Empty;
         private string dailyPuzzleDateKey = string.Empty;
         private string dailyPuzzleDateLabel = string.Empty;
+        private OnlineMatchController onlineSession;
         private float tutorialResultUntil;
         private float hintMessageUntil;
         private float completionPopupReadyAt;
@@ -130,6 +134,23 @@ namespace BottleBattle
         {
             enabled = true;
             LoadDailyPuzzle();
+        }
+
+        public void BeginOnlineMatch(int seed, int bottleCount, OnlineMatchController session)
+        {
+            enabled = true;
+            LoadOnlinePuzzle(seed, bottleCount, session);
+        }
+
+        public void ReceiveOnlineResult(bool won)
+        {
+            if (!onlinePuzzleMode || onlineMatchFinished)
+            {
+                return;
+            }
+            onlineMatchFinished = true;
+            onlinePlayerWon = won;
+            draggedIndex = -1;
         }
 
         private void Awake()
@@ -158,8 +179,10 @@ namespace BottleBattle
 
         private void LoadLevel(int level)
         {
-            bool enteringDifferentLevel = dailyPuzzleMode || currentLevel != level;
+            bool enteringDifferentLevel = dailyPuzzleMode || onlinePuzzleMode || currentLevel != level;
             dailyPuzzleMode = false;
+            onlinePuzzleMode = false;
+            onlineSession = null;
             currentLevel = Mathf.Clamp(level, 1, FinalLevel);
             completed = false;
             failed = false;
@@ -230,6 +253,8 @@ namespace BottleBattle
             string newDateKey = today.ToString("yyyyMMdd");
             bool enteringDifferentDaily = !dailyPuzzleMode || dailyPuzzleDateKey != newDateKey;
             dailyPuzzleMode = true;
+            onlinePuzzleMode = false;
+            onlineSession = null;
             dailyPuzzleDateKey = newDateKey;
             dailyPuzzleDateLabel = today.ToString("MMM dd").ToUpperInvariant();
             dailyRewardAlreadyClaimed = PlayerPrefs.GetInt(DailyRewardKeyPrefix + dailyPuzzleDateKey, 0) == 1;
@@ -293,6 +318,67 @@ namespace BottleBattle
             // Larger daily puzzles get a wider one-star recovery range.
             int dailyMoveMultiplier = minimumMoves > 7 ? 4 : 3;
             moveLimit = Mathf.Max(1, minimumMoves * dailyMoveMultiplier);
+        }
+
+        private void LoadOnlinePuzzle(int seed, int requestedBottleCount, OnlineMatchController session)
+        {
+            dailyPuzzleMode = false;
+            onlinePuzzleMode = true;
+            onlineSession = session;
+            onlineMatchFinished = false;
+            onlinePlayerWon = false;
+            currentLevel = 0;
+            completed = false;
+            failed = false;
+            allLevelsCompleted = false;
+            completionPopupReadyAt = 0f;
+            moveCount = 0;
+            minimumMoves = 0;
+            moveLimit = int.MaxValue;
+            earnedStars = 0;
+            earnedCoins = 0;
+            bestMoveCount = 0;
+            draggedIndex = -1;
+            hintPopupOpen = false;
+            hintMessage = string.Empty;
+            hintMessageUntil = 0f;
+            colorHintSlots.Clear();
+            shapeHintSlots.Clear();
+            singleBottleHintPurchased = false;
+            shapeHintPurchased = false;
+            fullRevealHintPurchased = false;
+            debugRevealTapCount = 0;
+            tutorialActive = false;
+            tutorialStage = 3;
+            tutorialResultUntil = 0f;
+            currentOrder.Clear();
+            targetOrder.Clear();
+
+            int bottleCount = Mathf.Clamp(requestedBottleCount, 10, 12);
+            var random = new System.Random(seed);
+            var availableBottleIds = new List<int>(BottleSpriteCatalog.BottleCount);
+            for (int index = 0; index < BottleSpriteCatalog.BottleCount; index++)
+            {
+                availableBottleIds.Add(index);
+            }
+            Shuffle(availableBottleIds, random);
+            for (int index = 0; index < bottleCount; index++)
+            {
+                targetOrder.Add(availableBottleIds[index]);
+            }
+            Shuffle(targetOrder, random);
+            currentOrder.AddRange(targetOrder);
+
+            int maxStartingCorrect = Mathf.Max(1, bottleCount / 5);
+            int shuffleAttempts = 0;
+            do
+            {
+                Shuffle(currentOrder, random);
+                shuffleAttempts++;
+            }
+            while ((OrdersMatch() || GetCorrectCount() > maxStartingCorrect) && shuffleAttempts < 128);
+
+            minimumMoves = CalculateMinimumMoves(currentOrder, targetOrder);
         }
 
         private static int GetBottleCount(int level)
@@ -406,6 +492,14 @@ namespace BottleBattle
             {
                 DrawHintPopup();
             }
+            else if (onlineMatchFinished)
+            {
+                DrawOnlineResultPopup();
+            }
+            else if (onlinePuzzleMode && completed)
+            {
+                DrawOnlineFinishPending();
+            }
             else if (failed)
             {
                 DrawFailurePopup();
@@ -447,20 +541,28 @@ namespace BottleBattle
                 }
                 else
                 {
-                    ReturnToMenu();
+                    if (onlinePuzzleMode && onlineSession != null)
+                    {
+                        onlineSession.ForfeitAndExit();
+                        enabled = false;
+                    }
+                    else
+                    {
+                        ReturnToMenu();
+                    }
                 }
             }
 
             GUI.Label(
                 new Rect(210f, 62f, 660f, 72f),
-                dailyPuzzleMode ? "DAILY PUZZLE" : $"LEVEL {currentLevel}",
+                onlinePuzzleMode ? "ONLINE MATCH" : dailyPuzzleMode ? "DAILY PUZZLE" : $"LEVEL {currentLevel}",
                 titleStyle);
             GUI.Label(
                 new Rect(210f, 128f, 660f, 48f),
-                dailyPuzzleMode ? dailyPuzzleDateLabel : $"{currentLevel} / {FinalLevel}",
+                onlinePuzzleMode ? "FIRST TO FINISH WINS" : dailyPuzzleMode ? dailyPuzzleDateLabel : $"{currentLevel} / {FinalLevel}",
                 subtitleStyle);
 
-            if (!dailyPuzzleMode && !hintPopupOpen && !completed && !failed)
+            if (!dailyPuzzleMode && !onlinePuzzleMode && !hintPopupOpen && !completed && !failed)
             {
                 Rect hintButton = new(908f, 55f, 124f, 104f);
                 if (DrawRoundedButton(
@@ -495,7 +597,9 @@ namespace BottleBattle
                 correctCountStyle);
             GUI.Label(
                 new Rect(100f, 342f, 880f, 48f),
-                $"MOVES: {moveCount} / {moveLimit}     MINIMUM: {minimumMoves}",
+                onlinePuzzleMode
+                    ? $"MOVES: {moveCount}     NO MOVE LIMIT"
+                    : $"MOVES: {moveCount} / {moveLimit}     MINIMUM: {minimumMoves}",
                 subtitleStyle);
             DrawShelfArea(
                 top: 355f,
@@ -814,7 +918,7 @@ namespace BottleBattle
 
         private void HandleDrag(Event guiEvent)
         {
-            if (completed || failed || hintPopupOpen || upperBottleRects.Count == 0)
+            if (completed || failed || onlineMatchFinished || hintPopupOpen || upperBottleRects.Count == 0)
             {
                 return;
             }
@@ -907,7 +1011,13 @@ namespace BottleBattle
             completed = OrdersMatch();
             if (!completed)
             {
-                failed = moveCount >= moveLimit;
+                failed = !onlinePuzzleMode && moveCount >= moveLimit;
+                return;
+            }
+
+            if (onlinePuzzleMode)
+            {
+                onlineSession?.SubmitCompletion(moveCount);
                 return;
             }
 
@@ -1248,7 +1358,9 @@ namespace BottleBattle
 
             GUI.Label(
                 new Rect(130f, 1570f, 820f, 80f),
-                "Arrange the upper bottles in the correct order",
+                onlinePuzzleMode
+                    ? "Finish the order before your opponent"
+                    : "Arrange the upper bottles in the correct order",
                 subtitleStyle);
         }
 
@@ -1473,6 +1585,57 @@ namespace BottleBattle
         {
             hintMessage = message;
             hintMessageUntil = Time.unscaledTime + 2.5f;
+        }
+
+        private void DrawOnlineFinishPending()
+        {
+            GUI.color = new Color(0.03f, 0.06f, 0.13f, 0.54f);
+            GUI.DrawTexture(new Rect(0f, 0f, DesignWidth, DesignHeight), Texture2D.whiteTexture);
+            GUI.color = White;
+            DrawRoundedPanel(new Rect(210f, 720f, 660f, 330f), Cream, Cyan, 38);
+            GUI.Label(new Rect(250f, 775f, 580f, 85f), "ORDER COMPLETE!", popupTitleStyle);
+            GUI.Label(new Rect(260f, 875f, 560f, 70f), "CHECKING THE FINISH...", popupSmallStyle);
+            GUI.Label(new Rect(260f, 945f, 560f, 55f), $"{moveCount} MOVES", popupSmallStyle);
+        }
+
+        private void DrawOnlineResultPopup()
+        {
+            GUI.color = new Color(0.03f, 0.06f, 0.13f, 0.68f);
+            GUI.DrawTexture(new Rect(0f, 0f, DesignWidth, DesignHeight), Texture2D.whiteTexture);
+            GUI.color = White;
+
+            Color accent = onlinePlayerWon ? Lime : Coral;
+            Rect popup = new(145f, 465f, 790f, 820f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(new Rect(popup.x + 13f, popup.y + 18f, popup.width, popup.height), Shadow, Shadow, 42);
+            GUI.color = White;
+            DrawRoundedPanel(popup, Cream, Darken(accent, 0.16f), 42);
+            DrawRoundedPanel(new Rect(185f, 405f, 710f, 170f), accent, Darken(accent, 0.22f), 38);
+            GUI.Label(
+                new Rect(195f, 440f, 690f, 100f),
+                onlinePlayerWon ? "YOU WIN!" : "OPPONENT WINS",
+                depthPopupTitleStyle);
+
+            GUI.Label(
+                new Rect(235f, 650f, 610f, 90f),
+                onlinePlayerWon ? "YOU FINISHED FIRST" : "BETTER LUCK NEXT MATCH",
+                popupStatStyle);
+            DrawRoundedPanel(new Rect(225f, 790f, 630f, 190f), Navy, Darken(Navy, 0.15f), 30);
+            GUI.Label(new Rect(260f, 825f, 560f, 65f), $"YOUR MOVES: {moveCount}", depthPopupStatStyle);
+            GUI.Label(
+                new Rect(260f, 895f, 560f, 55f),
+                onlinePlayerWon ? "FASTEST ORDER" : "MATCH FINISHED",
+                depthPopupSmallStyle);
+
+            if (DrawGlossyPopupButton(
+                    new Rect(300f, 1070f, 480f, 140f),
+                    "MENU",
+                    Gold,
+                    Darken(Gold, 0.25f)))
+            {
+                onlineSession?.ExitToMenu();
+                enabled = false;
+            }
         }
 
         private void DrawFailurePopup()
