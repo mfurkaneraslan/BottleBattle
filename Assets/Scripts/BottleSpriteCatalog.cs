@@ -110,9 +110,9 @@ namespace BottleBattle
                 for (int index = 0; index < pixels.Length; index++)
                 {
                     Color source = pixels[index];
-                    float luminance = source.r * 0.299f + source.g * 0.587f + source.b * 0.114f;
-                    float grey = Mathf.Lerp(0.56f, 0.82f, luminance);
-                    pixels[index] = new Color(grey, grey, grey, source.a);
+                    // Shape hints reveal only the silhouette. Keeping a single flat
+                    // value prevents labels, stripes and drink colors from leaking.
+                    pixels[index] = new Color(0.72f, 0.74f, 0.76f, source.a);
                 }
 
                 texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
