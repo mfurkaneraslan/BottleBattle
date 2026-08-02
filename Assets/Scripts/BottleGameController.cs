@@ -44,6 +44,8 @@ namespace BottleBattle
         private readonly List<int> currentOrder = new();
         private readonly List<int> targetOrder = new();
         private readonly List<Rect> upperBottleRects = new();
+        private readonly HashSet<int> colorHintSlots = new();
+        private readonly HashSet<int> shapeHintSlots = new();
 
         private Font uiFont;
         private Texture2D completionStarTexture;
@@ -71,6 +73,11 @@ namespace BottleBattle
         private GUIStyle tutorialMessageStyle;
         private GUIStyle tutorialArrowStyle;
         private GUIStyle tutorialHintStyle;
+        private GUIStyle hintPopupTitleStyle;
+        private GUIStyle hintOptionTitleStyle;
+        private GUIStyle hintOptionDescriptionStyle;
+        private GUIStyle hintCoinStyle;
+        private GUIStyle hintPriceStyle;
 
         private int currentLevel;
         private int moveCount;
@@ -84,12 +91,18 @@ namespace BottleBattle
         private bool failed;
         private bool allLevelsCompleted;
         private bool tutorialActive;
+        private bool hintPopupOpen;
+        private bool singleBottleHintPurchased;
+        private bool shapeHintPurchased;
+        private bool fullRevealHintPurchased;
         private int tutorialStage;
         private int tutorialSourceIndex;
         private int tutorialTargetIndex;
         private int correctBeforeSwap;
         private string tutorialMessage = string.Empty;
+        private string hintMessage = string.Empty;
         private float tutorialResultUntil;
+        private float hintMessageUntil;
         private float completionPopupReadyAt;
 
         public void Begin()
@@ -130,6 +143,7 @@ namespace BottleBattle
 
         private void LoadLevel(int level)
         {
+            bool enteringDifferentLevel = currentLevel != level;
             currentLevel = Mathf.Clamp(level, 1, FinalLevel);
             completed = false;
             failed = false;
@@ -140,6 +154,17 @@ namespace BottleBattle
             earnedStars = 0;
             bestMoveCount = PlayerPrefs.GetInt(GetBestMovesKey(currentLevel), 0);
             draggedIndex = -1;
+            hintPopupOpen = false;
+            hintMessage = string.Empty;
+            hintMessageUntil = 0f;
+            if (enteringDifferentLevel)
+            {
+                colorHintSlots.Clear();
+                shapeHintSlots.Clear();
+                singleBottleHintPurchased = false;
+                shapeHintPurchased = false;
+                fullRevealHintPurchased = false;
+            }
             // The first three levels are guided lessons every time they are played.
             tutorialActive = currentLevel <= 3;
             tutorialStage = 0;
@@ -282,17 +307,21 @@ namespace BottleBattle
             DrawBackground();
             DrawHeader();
             DrawPuzzle();
-            if (tutorialActive && !failed)
+            if (tutorialActive && !failed && !hintPopupOpen)
             {
                 DrawTutorial();
             }
             HandleDrag(Event.current);
             DrawBottomAction();
-            if (failed)
+            if (hintPopupOpen)
+            {
+                DrawHintPopup();
+            }
+            else if (failed)
             {
                 DrawFailurePopup();
             }
-            if (completed && Time.unscaledTime >= completionPopupReadyAt)
+            else if (completed && Time.unscaledTime >= completionPopupReadyAt)
             {
                 DrawDepthCompletionPopup();
             }
@@ -339,6 +368,29 @@ namespace BottleBattle
                 $"{currentLevel} / {FinalLevel}",
                 subtitleStyle);
 
+            if (!hintPopupOpen && !completed && !failed)
+            {
+                Rect hintButton = new(908f, 55f, 124f, 104f);
+                if (DrawRoundedButton(
+                        hintButton,
+                        string.Empty,
+                        Cream,
+                        CreamDark,
+                        headerStyle))
+                {
+                    hintPopupOpen = true;
+                    draggedIndex = -1;
+                    return;
+                }
+
+                DrawBulbIcon(hintButton);
+                DrawRoundedPanel(new Rect(820f, 162f, 212f, 54f), Navy, Darken(Navy, 0.12f), 22);
+                GUI.color = Gold;
+                DrawCircle(new Rect(836f, 171f, 36f, 36f));
+                GUI.color = White;
+                GUI.Label(new Rect(878f, 166f, 140f, 44f), CoinWallet.Balance.ToString("N0"), hintCoinStyle);
+            }
+
         }
 
         private void DrawPuzzle()
@@ -372,7 +424,8 @@ namespace BottleBattle
                 shelfTop: 1385f,
                 order: targetOrder,
                 revealColors: completed,
-                interactive: false);
+                interactive: false,
+                applyHints: true);
         }
 
         private void DrawShelfArea(
@@ -380,7 +433,8 @@ namespace BottleBattle
             float shelfTop,
             List<int> order,
             bool revealColors,
-            bool interactive)
+            bool interactive,
+            bool applyHints = false)
         {
             const float left = 105f;
             const float right = 975f;
@@ -420,10 +474,16 @@ namespace BottleBattle
                     continue;
                 }
 
-                Color color = revealColors
+                bool showColor = revealColors ||
+                                 (applyHints && (fullRevealHintPurchased || colorHintSlots.Contains(index)));
+                bool showShape = applyHints && !showColor && shapeHintSlots.Contains(index);
+                Color color = showColor
                     ? BottleColors[order[index] % BottleColors.Length]
                     : Grey;
-                DrawBottle(bottleRect, color, order[index], revealColors);
+                if (!showShape || !DrawGrayscaleSpriteBottle(bottleRect, order[index]))
+                {
+                    DrawBottle(bottleRect, color, order[index], showColor);
+                }
             }
 
             DrawShelf(shelfTop);
@@ -620,9 +680,46 @@ namespace BottleBattle
             return true;
         }
 
+        private bool DrawGrayscaleSpriteBottle(Rect rect, int identity)
+        {
+            if (!BottleSpriteCatalog.TryGetGrayscale(
+                    identity,
+                    out Texture2D texture,
+                    out Rect textureCoordinates,
+                    out float aspectRatio))
+            {
+                return false;
+            }
+
+            GUI.color = Shadow;
+            DrawCircle(new Rect(
+                rect.x + rect.width * 0.13f,
+                rect.yMax - rect.height * 0.055f,
+                rect.width * 0.74f,
+                rect.height * 0.09f));
+
+            float drawHeight = rect.height * 0.98f;
+            float drawWidth = drawHeight * aspectRatio;
+            float maximumWidth = rect.width * 0.98f;
+            if (drawWidth > maximumWidth)
+            {
+                drawWidth = maximumWidth;
+                drawHeight = drawWidth / aspectRatio;
+            }
+
+            Rect drawRect = new(
+                rect.center.x - drawWidth * 0.5f,
+                rect.yMax - drawHeight,
+                drawWidth,
+                drawHeight);
+            GUI.color = White;
+            GUI.DrawTextureWithTexCoords(drawRect, texture, textureCoordinates, true);
+            return true;
+        }
+
         private void HandleDrag(Event guiEvent)
         {
-            if (completed || failed || upperBottleRects.Count == 0)
+            if (completed || failed || hintPopupOpen || upperBottleRects.Count == 0)
             {
                 return;
             }
@@ -1010,7 +1107,7 @@ namespace BottleBattle
 
         private void DrawBottomAction()
         {
-            if (completed || failed || tutorialActive)
+            if (completed || failed || hintPopupOpen || tutorialActive)
             {
                 return;
             }
@@ -1019,6 +1116,189 @@ namespace BottleBattle
                 new Rect(130f, 1570f, 820f, 80f),
                 "Arrange the upper bottles in the correct order",
                 subtitleStyle);
+        }
+
+        private void DrawBulbIcon(Rect buttonRect)
+        {
+            Vector2 center = new(buttonRect.center.x, buttonRect.y + 43f);
+            GUI.color = new Color(Gold.r, Gold.g, Gold.b, 0.28f);
+            DrawCircle(new Rect(center.x - 31f, center.y - 31f, 62f, 62f));
+            GUI.color = Gold;
+            DrawCircle(new Rect(center.x - 24f, center.y - 24f, 48f, 48f));
+            DrawRoundedPanel(new Rect(center.x - 15f, center.y + 16f, 30f, 24f), Gold, Gold, 8);
+            GUI.color = Navy;
+            GUI.DrawTexture(new Rect(center.x - 14f, center.y + 23f, 28f, 5f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(center.x - 11f, center.y + 33f, 22f, 5f), Texture2D.whiteTexture);
+            GUI.color = White;
+        }
+
+        private void DrawHintPopup()
+        {
+            GUI.color = new Color(0.03f, 0.06f, 0.13f, 0.70f);
+            GUI.DrawTexture(new Rect(0f, 0f, DesignWidth, DesignHeight), Texture2D.whiteTexture);
+            GUI.color = White;
+
+            Rect popup = new(90f, 245f, 900f, 1360f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(new Rect(popup.x + 13f, popup.y + 19f, popup.width, popup.height), Shadow, Shadow, 42);
+            GUI.color = White;
+            DrawRoundedPanel(popup, Cream, Gold, 42);
+            DrawRoundedPanel(new Rect(90f, 245f, 900f, 170f), Cyan, DeepBlue, 42);
+            GUI.Label(new Rect(190f, 278f, 700f, 95f), "HINTS", hintPopupTitleStyle);
+
+            if (DrawRoundedButton(new Rect(885f, 275f, 72f, 72f), "X", Coral, Darken(Coral, 0.20f), popupSmallStyle))
+            {
+                hintPopupOpen = false;
+                return;
+            }
+
+            DrawRoundedPanel(new Rect(330f, 430f, 420f, 72f), Navy, Darken(Navy, 0.12f), 24);
+            GUI.color = Gold;
+            DrawCircle(new Rect(354f, 447f, 38f, 38f));
+            GUI.color = White;
+            GUI.Label(new Rect(408f, 440f, 310f, 54f), CoinWallet.Balance.ToString("N0"), hintCoinStyle);
+
+            bool weakerHintsUnavailable = fullRevealHintPurchased;
+            DrawHintOption(
+                new Rect(145f, 545f, 790f, 245f),
+                "REVEAL 1 BOTTLE",
+                "Reveal the correct place of one bottle that is currently misplaced.",
+                30,
+                singleBottleHintPurchased || weakerHintsUnavailable,
+                TryPurchaseSingleBottleHint);
+            DrawHintOption(
+                new Rect(145f, 825f, 790f, 245f),
+                "REVEAL HALF THE SHAPES",
+                "Show the real shapes of half the target bottles while keeping them grey.",
+                60,
+                shapeHintPurchased || weakerHintsUnavailable,
+                TryPurchaseShapeHint);
+            DrawHintOption(
+                new Rect(145f, 1105f, 790f, 245f),
+                "REVEAL FULL ORDER",
+                "Reveal every bottle on the target shelf in full color.",
+                100,
+                fullRevealHintPurchased,
+                TryPurchaseFullRevealHint);
+
+            if (Time.unscaledTime < hintMessageUntil && !string.IsNullOrEmpty(hintMessage))
+            {
+                GUI.Label(new Rect(155f, 1390f, 770f, 100f), hintMessage, hintOptionDescriptionStyle);
+            }
+            else
+            {
+                GUI.Label(new Rect(155f, 1390f, 770f, 100f), "Choose a hint to help with this level.", hintOptionDescriptionStyle);
+            }
+        }
+
+        private void DrawHintOption(
+            Rect rect,
+            string title,
+            string description,
+            int price,
+            bool purchased,
+            Action purchaseAction)
+        {
+            DrawRoundedPanel(rect, White, CreamDark, 30);
+            GUI.Label(new Rect(rect.x + 32f, rect.y + 22f, rect.width - 270f, 56f), title, hintOptionTitleStyle);
+            GUI.Label(new Rect(rect.x + 32f, rect.y + 82f, rect.width - 270f, 135f), description, hintOptionDescriptionStyle);
+
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = !purchased;
+            string priceLabel = purchased ? "USED" : price.ToString();
+            if (DrawRoundedButton(
+                    new Rect(rect.xMax - 210f, rect.y + 62f, 170f, 122f),
+                    priceLabel,
+                    purchased ? Grey : Gold,
+                    purchased ? GreyDark : Darken(Gold, 0.20f),
+                    hintPriceStyle))
+            {
+                purchaseAction();
+            }
+            GUI.enabled = previousEnabled;
+
+            if (!purchased)
+            {
+                GUI.color = Cream;
+                DrawCircle(new Rect(rect.xMax - 190f, rect.y + 77f, 28f, 28f));
+                GUI.color = White;
+            }
+        }
+
+        private void TryPurchaseSingleBottleHint()
+        {
+            var availableSlots = new List<int>();
+            for (int currentIndex = 0; currentIndex < currentOrder.Count; currentIndex++)
+            {
+                if (currentOrder[currentIndex] == targetOrder[currentIndex])
+                {
+                    continue;
+                }
+
+                int correctSlot = targetOrder.IndexOf(currentOrder[currentIndex]);
+                if (correctSlot >= 0 && !colorHintSlots.Contains(correctSlot))
+                {
+                    availableSlots.Add(correctSlot);
+                }
+            }
+
+            if (availableSlots.Count == 0)
+            {
+                ShowHintMessage("There are no hidden misplaced bottles left to reveal.");
+                return;
+            }
+
+            if (!CoinWallet.TrySpend(30))
+            {
+                ShowHintMessage("Not enough coins.");
+                return;
+            }
+
+            int selected = availableSlots[(currentLevel + moveCount) % availableSlots.Count];
+            colorHintSlots.Add(selected);
+            singleBottleHintPurchased = true;
+            ShowHintMessage("One bottle position has been revealed!");
+        }
+
+        private void TryPurchaseShapeHint()
+        {
+            if (!CoinWallet.TrySpend(60))
+            {
+                ShowHintMessage("Not enough coins.");
+                return;
+            }
+
+            var slots = new List<int>();
+            for (int index = 0; index < targetOrder.Count; index++)
+            {
+                slots.Add(index);
+            }
+            Shuffle(slots, new System.Random(currentLevel * 3571 + 61));
+            int revealCount = Mathf.CeilToInt(targetOrder.Count * 0.5f);
+            for (int index = 0; index < revealCount; index++)
+            {
+                shapeHintSlots.Add(slots[index]);
+            }
+            shapeHintPurchased = true;
+            ShowHintMessage("Half of the target bottle shapes are now visible!");
+        }
+
+        private void TryPurchaseFullRevealHint()
+        {
+            if (!CoinWallet.TrySpend(100))
+            {
+                ShowHintMessage("Not enough coins.");
+                return;
+            }
+
+            fullRevealHintPurchased = true;
+            ShowHintMessage("The full target order has been revealed!");
+        }
+
+        private void ShowHintMessage(string message)
+        {
+            hintMessage = message;
+            hintMessageUntil = Time.unscaledTime + 2.5f;
         }
 
         private void DrawFailurePopup()
@@ -1504,6 +1784,12 @@ namespace BottleBattle
             tutorialMessageStyle.wordWrap = true;
             tutorialArrowStyle = CreateTextStyle(31, Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
             tutorialHintStyle = CreateTextStyle(22, Gold, FontStyle.Bold, TextAnchor.MiddleLeft);
+            hintPopupTitleStyle = CreateTextStyle(58, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            hintOptionTitleStyle = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleLeft);
+            hintOptionDescriptionStyle = CreateTextStyle(23, GreyDark, FontStyle.Bold, TextAnchor.MiddleLeft);
+            hintOptionDescriptionStyle.wordWrap = true;
+            hintCoinStyle = CreateTextStyle(27, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            hintPriceStyle = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
         }
 
         private GUIStyle CreateTextStyle(int size, Color color, FontStyle fontStyle, TextAnchor alignment)

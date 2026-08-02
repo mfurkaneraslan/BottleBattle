@@ -44,6 +44,7 @@ namespace BottleBattle
 
         private static Texture2D primaryAtlas;
         private static Texture2D extraAtlas;
+        private static readonly Texture2D[] GrayscaleBottles = new Texture2D[BottleCount];
 
         public static bool TryGet(
             int identity,
@@ -80,6 +81,53 @@ namespace BottleBattle
                 bounds.width / AtlasWidth,
                 bounds.height / AtlasHeight);
             aspectRatio = bounds.width / (float)bounds.height;
+            return true;
+        }
+
+        public static bool TryGetGrayscale(
+            int identity,
+            out Texture2D texture,
+            out Rect textureCoordinates,
+            out float aspectRatio)
+        {
+            int normalizedIdentity = Mathf.Abs(identity) % BottleCount;
+            if (!TryGet(normalizedIdentity, out Texture2D atlas, out Rect atlasCoordinates, out aspectRatio))
+            {
+                texture = null;
+                textureCoordinates = default;
+                return false;
+            }
+
+            texture = GrayscaleBottles[normalizedIdentity];
+            if (texture == null)
+            {
+                int x = Mathf.RoundToInt(atlasCoordinates.x * atlas.width);
+                int y = Mathf.RoundToInt(atlasCoordinates.y * atlas.height);
+                int width = Mathf.Max(1, Mathf.RoundToInt(atlasCoordinates.width * atlas.width));
+                int height = Mathf.Max(1, Mathf.RoundToInt(atlasCoordinates.height * atlas.height));
+                Color[] pixels = atlas.GetPixels(x, y, width, height);
+
+                for (int index = 0; index < pixels.Length; index++)
+                {
+                    Color source = pixels[index];
+                    float luminance = source.r * 0.299f + source.g * 0.587f + source.b * 0.114f;
+                    float grey = Mathf.Lerp(0.56f, 0.82f, luminance);
+                    pixels[index] = new Color(grey, grey, grey, source.a);
+                }
+
+                texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+                {
+                    name = $"Bottle-{normalizedIdentity}-Grayscale",
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                texture.SetPixels(pixels);
+                texture.Apply(false, true);
+                GrayscaleBottles[normalizedIdentity] = texture;
+            }
+
+            textureCoordinates = new Rect(0f, 0f, 1f, 1f);
             return true;
         }
     }
