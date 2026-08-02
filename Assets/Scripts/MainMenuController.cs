@@ -617,7 +617,7 @@ namespace BottleBattle
                     secondaryButtonText))
             {
                 DailyPuzzleRequested?.Invoke();
-                ShowStatus("Daily puzzle selected");
+                OpenDailyPuzzle();
             }
 
         }
@@ -648,6 +648,18 @@ namespace BottleBattle
             }
 
             levelSelect.Begin();
+            enabled = false;
+        }
+
+        private void OpenDailyPuzzle()
+        {
+            BottleGameController game = FindAnyObjectByType<BottleGameController>();
+            if (game == null)
+            {
+                game = gameObject.AddComponent<BottleGameController>();
+            }
+
+            game.BeginDailyPuzzle();
             enabled = false;
         }
 

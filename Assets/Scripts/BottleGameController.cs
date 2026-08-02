@@ -14,6 +14,7 @@ namespace BottleBattle
         private const float DesignHeight = 1920f;
         private const int FinalLevel = 100;
         private const string SavedLevelKey = "BottleOrder.CurrentLevel";
+        private const string DailyRewardKeyPrefix = "BottleBattle.DailyReward.";
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
@@ -93,6 +94,8 @@ namespace BottleBattle
         private bool failed;
         private bool allLevelsCompleted;
         private bool tutorialActive;
+        private bool dailyPuzzleMode;
+        private bool dailyRewardAlreadyClaimed;
         private bool hintPopupOpen;
         private bool singleBottleHintPurchased;
         private bool shapeHintPurchased;
@@ -103,6 +106,8 @@ namespace BottleBattle
         private int correctBeforeSwap;
         private string tutorialMessage = string.Empty;
         private string hintMessage = string.Empty;
+        private string dailyPuzzleDateKey = string.Empty;
+        private string dailyPuzzleDateLabel = string.Empty;
         private float tutorialResultUntil;
         private float hintMessageUntil;
         private float completionPopupReadyAt;
@@ -118,6 +123,12 @@ namespace BottleBattle
         {
             enabled = true;
             LoadLevel(Mathf.Clamp(level, 1, FinalLevel));
+        }
+
+        public void BeginDailyPuzzle()
+        {
+            enabled = true;
+            LoadDailyPuzzle();
         }
 
         private void Awake()
@@ -146,7 +157,8 @@ namespace BottleBattle
 
         private void LoadLevel(int level)
         {
-            bool enteringDifferentLevel = currentLevel != level;
+            bool enteringDifferentLevel = dailyPuzzleMode || currentLevel != level;
+            dailyPuzzleMode = false;
             currentLevel = Mathf.Clamp(level, 1, FinalLevel);
             completed = false;
             failed = false;
@@ -208,6 +220,74 @@ namespace BottleBattle
             SetupTutorialMove();
             minimumMoves = CalculateMinimumMoves(currentOrder, targetOrder);
             moveLimit = minimumMoves > 5 ? 15 : Mathf.Max(1, minimumMoves * 3);
+        }
+
+        private void LoadDailyPuzzle()
+        {
+            DateTime today = DateTime.Now.Date;
+            string newDateKey = today.ToString("yyyyMMdd");
+            bool enteringDifferentDaily = !dailyPuzzleMode || dailyPuzzleDateKey != newDateKey;
+            dailyPuzzleMode = true;
+            dailyPuzzleDateKey = newDateKey;
+            dailyPuzzleDateLabel = today.ToString("MMM dd").ToUpperInvariant();
+            dailyRewardAlreadyClaimed = PlayerPrefs.GetInt(DailyRewardKeyPrefix + dailyPuzzleDateKey, 0) == 1;
+
+            completed = false;
+            failed = false;
+            allLevelsCompleted = false;
+            completionPopupReadyAt = 0f;
+            moveCount = 0;
+            minimumMoves = 0;
+            earnedStars = 0;
+            earnedCoins = 0;
+            bestMoveCount = PlayerPrefs.GetInt(GetDailyBestMovesKey(dailyPuzzleDateKey), 0);
+            draggedIndex = -1;
+            hintPopupOpen = false;
+            hintMessage = string.Empty;
+            hintMessageUntil = 0f;
+            if (enteringDifferentDaily)
+            {
+                colorHintSlots.Clear();
+                shapeHintSlots.Clear();
+                singleBottleHintPurchased = false;
+                shapeHintPurchased = false;
+                fullRevealHintPurchased = false;
+            }
+
+            tutorialActive = false;
+            tutorialStage = 3;
+            tutorialResultUntil = 0f;
+            currentOrder.Clear();
+            targetOrder.Clear();
+
+            int dateNumber = today.Year * 10000 + today.Month * 100 + today.Day;
+            int bottleCount = 10 + dateNumber % 3;
+            var random = new System.Random(unchecked(dateNumber * 7919 + 208081));
+            var availableBottleIds = new List<int>(BottleSpriteCatalog.BottleCount);
+            for (int index = 0; index < BottleSpriteCatalog.BottleCount; index++)
+            {
+                availableBottleIds.Add(index);
+            }
+
+            Shuffle(availableBottleIds, random);
+            for (int index = 0; index < bottleCount; index++)
+            {
+                targetOrder.Add(availableBottleIds[index]);
+            }
+            Shuffle(targetOrder, random);
+            currentOrder.AddRange(targetOrder);
+
+            int maxStartingCorrect = Mathf.Max(1, bottleCount / 5);
+            int shuffleAttempts = 0;
+            do
+            {
+                Shuffle(currentOrder, random);
+                shuffleAttempts++;
+            }
+            while ((OrdersMatch() || GetCorrectCount() > maxStartingCorrect) && shuffleAttempts < 128);
+
+            minimumMoves = CalculateMinimumMoves(currentOrder, targetOrder);
+            moveLimit = 15;
         }
 
         private static int GetBottleCount(int level)
@@ -366,10 +446,13 @@ namespace BottleBattle
                 }
             }
 
-            GUI.Label(new Rect(210f, 62f, 660f, 72f), $"LEVEL {currentLevel}", titleStyle);
+            GUI.Label(
+                new Rect(210f, 62f, 660f, 72f),
+                dailyPuzzleMode ? "DAILY PUZZLE" : $"LEVEL {currentLevel}",
+                titleStyle);
             GUI.Label(
                 new Rect(210f, 128f, 660f, 48f),
-                $"{currentLevel} / {FinalLevel}",
+                dailyPuzzleMode ? dailyPuzzleDateLabel : $"{currentLevel} / {FinalLevel}",
                 subtitleStyle);
 
             if (!hintPopupOpen && !completed && !failed)
@@ -824,6 +907,26 @@ namespace BottleBattle
             }
 
             earnedStars = CalculateStars(moveCount, minimumMoves);
+            if (dailyPuzzleMode)
+            {
+                earnedCoins = dailyRewardAlreadyClaimed ? 0 : 100;
+                if (earnedCoins > 0)
+                {
+                    CoinWallet.Add(earnedCoins);
+                    PlayerPrefs.SetInt(DailyRewardKeyPrefix + dailyPuzzleDateKey, 1);
+                    dailyRewardAlreadyClaimed = true;
+                }
+
+                if (bestMoveCount <= 0 || moveCount < bestMoveCount)
+                {
+                    bestMoveCount = moveCount;
+                    PlayerPrefs.SetInt(GetDailyBestMovesKey(dailyPuzzleDateKey), bestMoveCount);
+                }
+
+                PlayerPrefs.Save();
+                return;
+            }
+
             earnedCoins = earnedStars switch
             {
                 3 => 15,
@@ -957,6 +1060,11 @@ namespace BottleBattle
         private static string GetBestMovesKey(int level)
         {
             return $"BottleOrder.Level.{level}.BestMoves";
+        }
+
+        private static string GetDailyBestMovesKey(string dateKey)
+        {
+            return $"BottleBattle.Daily.{dateKey}.BestMoves";
         }
 
         private void SetupTutorialMove()
@@ -1387,7 +1495,14 @@ namespace BottleBattle
                     Coral,
                     Darken(Coral, 0.24f)))
             {
-                LoadLevel(currentLevel);
+                if (dailyPuzzleMode)
+                {
+                    LoadDailyPuzzle();
+                }
+                else
+                {
+                    LoadLevel(currentLevel);
+                }
             }
         }
 
@@ -1501,12 +1616,13 @@ namespace BottleBattle
                 38);
             GUI.color = White;
             DrawRoundedPanel(bannerRect, Lighten(SkyBlue, 0.18f), DeepBlue, 38);
-            GUI.Label(new Rect(194f, 355f, 700f, 105f), "COMPLETE", depthPopupTitleShadowStyle);
-            GUI.Label(new Rect(190f, 348f, 700f, 105f), "COMPLETE", depthPopupTitleStyle);
+            string completionTitle = dailyPuzzleMode ? "DAILY COMPLETE" : "COMPLETE";
+            GUI.Label(new Rect(194f, 355f, 700f, 105f), completionTitle, depthPopupTitleShadowStyle);
+            GUI.Label(new Rect(190f, 348f, 700f, 105f), completionTitle, depthPopupTitleStyle);
 
             GUI.Label(
                 new Rect(235f, 510f, 610f, 58f),
-                $"LEVEL {currentLevel}",
+                dailyPuzzleMode ? dailyPuzzleDateLabel : $"LEVEL {currentLevel}",
                 depthPopupLevelStyle);
 
             for (int starIndex = 0; starIndex < 3; starIndex++)
@@ -1544,10 +1660,14 @@ namespace BottleBattle
                 depthPopupSmallStyle);
             GUI.Label(
                 new Rect(240f, 1020f, 600f, 52f),
-                $"REWARD: +{earnedCoins} COINS",
+                dailyPuzzleMode && earnedCoins == 0
+                    ? "DAILY REWARD ALREADY CLAIMED"
+                    : $"REWARD: +{earnedCoins} COINS",
                 depthPopupSmallStyle);
 
-            string praise = earnedStars switch
+            string praise = dailyPuzzleMode
+                ? earnedCoins > 0 ? "100 COINS COLLECTED!" : "COMPLETED FOR TODAY!"
+                : earnedStars switch
             {
                 3 => "BRILLIANT!",
                 2 => "GREAT JOB!",
@@ -1564,18 +1684,25 @@ namespace BottleBattle
                     Coral,
                     Darken(Coral, 0.24f)))
             {
-                LoadLevel(currentLevel);
+                if (dailyPuzzleMode)
+                {
+                    LoadDailyPuzzle();
+                }
+                else
+                {
+                    LoadLevel(currentLevel);
+                }
                 return;
             }
 
-            string nextLabel = allLevelsCompleted ? "MENU" : "NEXT";
+            string nextLabel = dailyPuzzleMode || allLevelsCompleted ? "MENU" : "NEXT";
             if (DrawGlossyPopupButton(
                     new Rect(575f, 1215f, 320f, 140f),
                     nextLabel,
                     Gold,
                     Darken(Gold, 0.25f)))
             {
-                if (allLevelsCompleted)
+                if (dailyPuzzleMode || allLevelsCompleted)
                 {
                     ReturnToMenu();
                 }
