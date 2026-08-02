@@ -84,6 +84,7 @@ namespace BottleBattle
         private int minimumMoves;
         private int moveLimit;
         private int earnedStars;
+        private int earnedCoins;
         private int bestMoveCount;
         private int draggedIndex = -1;
         private Vector2 dragPosition;
@@ -152,6 +153,7 @@ namespace BottleBattle
             moveCount = 0;
             minimumMoves = 0;
             earnedStars = 0;
+            earnedCoins = 0;
             bestMoveCount = PlayerPrefs.GetInt(GetBestMovesKey(currentLevel), 0);
             draggedIndex = -1;
             hintPopupOpen = false;
@@ -822,6 +824,13 @@ namespace BottleBattle
             }
 
             earnedStars = CalculateStars(moveCount, minimumMoves);
+            earnedCoins = earnedStars switch
+            {
+                3 => 15,
+                2 => 10,
+                _ => 5
+            };
+            CoinWallet.Add(earnedCoins);
             int savedStars = PlayerPrefs.GetInt(GetStarsKey(currentLevel), 0);
             if (earnedStars > savedStars)
             {
@@ -1258,6 +1267,7 @@ namespace BottleBattle
             colorHintSlots.Add(selected);
             singleBottleHintPurchased = true;
             ShowHintMessage("One bottle position has been revealed!");
+            hintPopupOpen = false;
         }
 
         private void TryPurchaseShapeHint()
@@ -1281,6 +1291,7 @@ namespace BottleBattle
             }
             shapeHintPurchased = true;
             ShowHintMessage("Half of the target bottle shapes are now visible!");
+            hintPopupOpen = false;
         }
 
         private void TryPurchaseFullRevealHint()
@@ -1293,6 +1304,7 @@ namespace BottleBattle
 
             fullRevealHintPurchased = true;
             ShowHintMessage("The full target order has been revealed!");
+            hintPopupOpen = false;
         }
 
         private void ShowHintMessage(string message)
@@ -1507,16 +1519,20 @@ namespace BottleBattle
             DrawRoundedPanel(new Rect(223f, 842f, 634f, 18f), GUI.color, Color.clear, 9);
             GUI.color = White;
             GUI.Label(
-                new Rect(240f, 858f, 600f, 70f),
+                new Rect(240f, 850f, 600f, 66f),
                 $"SOLVED IN {moveCount} MOVES",
                 depthPopupStatStyle);
             GUI.Label(
-                new Rect(240f, 930f, 600f, 58f),
+                new Rect(240f, 916f, 600f, 52f),
                 $"MINIMUM: {minimumMoves} MOVES",
                 depthPopupSmallStyle);
             GUI.Label(
-                new Rect(240f, 990f, 600f, 58f),
+                new Rect(240f, 968f, 600f, 52f),
                 $"BEST: {bestMoveCount} MOVES",
+                depthPopupSmallStyle);
+            GUI.Label(
+                new Rect(240f, 1020f, 600f, 52f),
+                $"REWARD: +{earnedCoins} COINS",
                 depthPopupSmallStyle);
 
             string praise = earnedStars switch

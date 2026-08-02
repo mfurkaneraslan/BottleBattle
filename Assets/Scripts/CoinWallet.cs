@@ -32,5 +32,16 @@ namespace BottleBattle
             PlayerPrefs.Save();
             return true;
         }
+
+        public static void Add(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetInt(CoinBalanceKey, Balance + amount);
+            PlayerPrefs.Save();
+        }
     }
 }
