@@ -27,6 +27,7 @@ namespace BottleBattle
         private GUIStyle titleNavy;
         private GUIStyle topBarText;
         private GUIStyle coinBalanceText;
+        private GUIStyle coinPlusText;
         private GUIStyle buttonText;
         private GUIStyle secondaryButtonText;
         private GUIStyle bottleBrandText;
@@ -199,37 +200,34 @@ namespace BottleBattle
 
             DrawSettingsGlyph(new Rect(54f, 56f, 126f, 112f));
 
-            Rect coinPanel = new(648f, 56f, 378f, 112f);
+            Rect coinPanel = new(740f, 68f, 286f, 84f);
             GUI.color = Shadow;
             DrawRoundedPanel(
-                new Rect(coinPanel.x + 7f, coinPanel.y + 11f, coinPanel.width, coinPanel.height),
+                new Rect(coinPanel.x + 5f, coinPanel.y + 7f, coinPanel.width, coinPanel.height),
                 Shadow,
                 Shadow,
-                34);
+                28);
             GUI.color = White;
-            DrawRoundedPanel(coinPanel, Navy, Darken(Navy, 0.12f), 34);
-            GUI.color = new Color(1f, 1f, 1f, 0.13f);
-            DrawRoundedPanel(new Rect(668f, 70f, 338f, 10f), GUI.color, Color.clear, 5);
-            GUI.color = White;
+            DrawRoundedPanel(coinPanel, Cream, CreamDark, 28);
             if (coinIconTexture != null)
             {
                 GUI.DrawTexture(
-                    new Rect(668f, 72f, 80f, 80f),
+                    new Rect(752f, 78f, 64f, 64f),
                     coinIconTexture,
                     ScaleMode.ScaleToFit,
                     true);
             }
             GUI.Label(
-                new Rect(752f, 71f, 158f, 82f),
+                new Rect(818f, 78f, 134f, 64f),
                 CoinWallet.Balance.ToString("N0"),
                 coinBalanceText);
 
-            if (DrawRoundedButton(
-                    new Rect(920f, 70f, 90f, 84f),
-                    "+",
-                    Gold,
-                    Darken(Gold, 0.20f),
-                    topBarText))
+            Rect addButton = new(968f, 91f, 40f, 40f);
+            GUI.color = Lime;
+            DrawCircle(addButton);
+            GUI.color = White;
+            GUI.Label(addButton, "+", coinPlusText);
+            if (GUI.Button(addButton, GUIContent.none, GUIStyle.none))
             {
                 ShowStatus("COIN SHOP COMING SOON");
             }
@@ -861,7 +859,8 @@ namespace BottleBattle
             titleCoral = CreateTextStyle(116, Coral, FontStyle.Bold, TextAnchor.MiddleCenter);
             titleNavy = CreateTextStyle(112, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             topBarText = CreateTextStyle(40, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
-            coinBalanceText = CreateTextStyle(31, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            coinBalanceText = CreateTextStyle(30, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            coinPlusText = CreateTextStyle(23, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             buttonText = CreateTextStyle(52, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             secondaryButtonText = CreateTextStyle(39, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleBrandText = CreateTextStyle(12, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
