@@ -1370,23 +1370,29 @@ namespace BottleBattle
 
             bool previousEnabled = GUI.enabled;
             GUI.enabled = !purchased;
-            string priceLabel = purchased ? "USED" : price.ToString();
+            Rect priceButton = new(rect.xMax - 210f, rect.y + 62f, 170f, 122f);
             if (DrawRoundedButton(
-                    new Rect(rect.xMax - 210f, rect.y + 62f, 170f, 122f),
-                    priceLabel,
-                    purchased ? Grey : Gold,
-                    purchased ? GreyDark : Darken(Gold, 0.20f),
+                    priceButton,
+                    string.Empty,
+                    purchased ? Grey : Navy,
+                    purchased ? GreyDark : Darken(Navy, 0.14f),
                     hintPriceStyle))
             {
                 purchaseAction();
             }
             GUI.enabled = previousEnabled;
 
-            if (!purchased)
+            if (purchased)
             {
-                GUI.color = Cream;
-                DrawCircle(new Rect(rect.xMax - 190f, rect.y + 77f, 28f, 28f));
-                GUI.color = White;
+                GUI.Label(priceButton, "USED", hintPriceStyle);
+            }
+            else
+            {
+                DrawCoinIcon(new Rect(priceButton.x + 17f, priceButton.center.y - 22f, 44f, 44f));
+                GUI.Label(
+                    new Rect(priceButton.x + 62f, priceButton.y, priceButton.width - 72f, priceButton.height),
+                    price.ToString(),
+                    hintPriceStyle);
             }
         }
 
@@ -1695,17 +1701,10 @@ namespace BottleBattle
                 new Rect(240f, 968f, 600f, 52f),
                 $"BEST: {bestMoveCount} MOVES",
                 depthPopupSmallStyle);
-            GUI.Label(
-                new Rect(240f, 1020f, 600f, 52f),
-                dailyPuzzleMode && earnedCoins == 0
-                    ? $"REWARD CLAIMED   TOTAL: {CoinWallet.Balance:N0}"
-                    : dailyPuzzleMode
-                        ? $"REWARD: +{earnedCoins}   TOTAL: {CoinWallet.Balance:N0}"
-                        : $"REWARD: +{earnedCoins} COINS",
-                depthPopupSmallStyle);
+            DrawCompletionCoinSummary();
 
             string praise = dailyPuzzleMode
-                ? earnedCoins > 0 ? $"{earnedCoins} COINS COLLECTED!" : "COMPLETED FOR TODAY!"
+                ? earnedCoins > 0 ? "DAILY REWARD COLLECTED!" : "COMPLETED FOR TODAY!"
                 : earnedStars switch
             {
                 3 => "BRILLIANT!",
@@ -1745,6 +1744,39 @@ namespace BottleBattle
                     LoadLevel(currentLevel + 1);
                 }
             }
+        }
+
+        private void DrawCompletionCoinSummary()
+        {
+            const float rowY = 1020f;
+            if (dailyPuzzleMode && earnedCoins == 0)
+            {
+                GUI.Label(new Rect(335f, rowY, 120f, 52f), "TOTAL", depthPopupSmallStyle);
+                DrawCoinIcon(new Rect(458f, rowY + 5f, 42f, 42f));
+                GUI.Label(
+                    new Rect(505f, rowY, 235f, 52f),
+                    CoinWallet.Balance.ToString("N0"),
+                    depthPopupSmallStyle);
+                return;
+            }
+
+            if (dailyPuzzleMode)
+            {
+                GUI.Label(new Rect(240f, rowY, 128f, 52f), "REWARD", depthPopupSmallStyle);
+                DrawCoinIcon(new Rect(370f, rowY + 5f, 42f, 42f));
+                GUI.Label(new Rect(414f, rowY, 86f, 52f), $"+{earnedCoins}", depthPopupSmallStyle);
+                GUI.Label(new Rect(500f, rowY, 96f, 52f), "TOTAL", depthPopupSmallStyle);
+                DrawCoinIcon(new Rect(598f, rowY + 5f, 42f, 42f));
+                GUI.Label(
+                    new Rect(642f, rowY, 198f, 52f),
+                    CoinWallet.Balance.ToString("N0"),
+                    depthPopupSmallStyle);
+                return;
+            }
+
+            GUI.Label(new Rect(320f, rowY, 145f, 52f), "REWARD", depthPopupSmallStyle);
+            DrawCoinIcon(new Rect(466f, rowY + 5f, 42f, 42f));
+            GUI.Label(new Rect(510f, rowY, 180f, 52f), $"+{earnedCoins}", depthPopupSmallStyle);
         }
 
         private void DrawSunburst(Vector2 center)
@@ -1978,7 +2010,7 @@ namespace BottleBattle
             hintOptionDescriptionStyle = CreateTextStyle(23, GreyDark, FontStyle.Bold, TextAnchor.MiddleLeft);
             hintOptionDescriptionStyle.wordWrap = true;
             hintCoinStyle = CreateTextStyle(27, White, FontStyle.Bold, TextAnchor.MiddleCenter);
-            hintPriceStyle = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            hintPriceStyle = CreateTextStyle(29, White, FontStyle.Bold, TextAnchor.MiddleCenter);
         }
 
         private GUIStyle CreateTextStyle(int size, Color color, FontStyle fontStyle, TextAnchor alignment)
