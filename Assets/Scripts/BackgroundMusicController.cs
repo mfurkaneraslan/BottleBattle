@@ -14,8 +14,8 @@ namespace BottleBattle
         private const string MusicMutedKey = "BottleBattle.MusicMuted";
         private const float DefaultVolume = 0.23f;
         private const float DropSoundVolume = 0.7f;
-        private const float DropSoundStartTime = 0.37f;
-        private const float DropSoundDuration = 0.23f;
+        private const float DropSoundStartTime = 0.36f;
+        private const float DropSoundDuration = 0.24f;
 
         private static BackgroundMusicController instance;
 
