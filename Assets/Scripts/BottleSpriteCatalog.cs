@@ -107,12 +107,29 @@ namespace BottleBattle
                 int height = Mathf.Max(1, Mathf.RoundToInt(atlasCoordinates.height * atlas.height));
                 Color[] pixels = atlas.GetPixels(x, y, width, height);
 
-                for (int index = 0; index < pixels.Length; index++)
+                var silhouettePixels = new Color[pixels.Length];
+                Color silhouetteColor = new(0.055f, 0.065f, 0.075f, 1f);
+                for (int row = 0; row < height; row++)
                 {
-                    Color source = pixels[index];
-                    // Shape hints reveal only the silhouette. Keeping a single flat
-                    // value prevents labels, stripes and drink colors from leaking.
-                    pixels[index] = new Color(0.72f, 0.74f, 0.76f, source.a);
+                    int leftEdge = width;
+                    int rightEdge = -1;
+                    for (int column = 0; column < width; column++)
+                    {
+                        if (pixels[row * width + column].a <= 0.035f)
+                        {
+                            continue;
+                        }
+
+                        leftEdge = Mathf.Min(leftEdge, column);
+                        rightEdge = Mathf.Max(rightEdge, column);
+                    }
+
+                    // Fill between the outermost opaque pixels. Some source labels
+                    // contain transparent bands, so recoloring alone can leak them.
+                    for (int column = leftEdge; column <= rightEdge; column++)
+                    {
+                        silhouettePixels[row * width + column] = silhouetteColor;
+                    }
                 }
 
                 texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
@@ -122,7 +139,7 @@ namespace BottleBattle
                     wrapMode = TextureWrapMode.Clamp,
                     hideFlags = HideFlags.HideAndDontSave
                 };
-                texture.SetPixels(pixels);
+                texture.SetPixels(silhouettePixels);
                 texture.Apply(false, true);
                 GrayscaleBottles[normalizedIdentity] = texture;
             }
