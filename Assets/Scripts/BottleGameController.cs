@@ -455,7 +455,7 @@ namespace BottleBattle
                 dailyPuzzleMode ? dailyPuzzleDateLabel : $"{currentLevel} / {FinalLevel}",
                 subtitleStyle);
 
-            if (!hintPopupOpen && !completed && !failed)
+            if (!dailyPuzzleMode && !hintPopupOpen && !completed && !failed)
             {
                 Rect hintButton = new(908f, 55f, 124f, 104f);
                 if (DrawRoundedButton(
@@ -909,7 +909,14 @@ namespace BottleBattle
             earnedStars = CalculateStars(moveCount, minimumMoves);
             if (dailyPuzzleMode)
             {
-                earnedCoins = dailyRewardAlreadyClaimed ? 0 : 100;
+                earnedCoins = dailyRewardAlreadyClaimed
+                    ? 0
+                    : earnedStars switch
+                    {
+                        3 => 150,
+                        2 => 100,
+                        _ => 70
+                    };
                 if (earnedCoins > 0)
                 {
                     CoinWallet.Add(earnedCoins);
@@ -1489,15 +1496,16 @@ namespace BottleBattle
                 $"MINIMUM: {minimumMoves} MOVES",
                 depthPopupSmallStyle);
 
+            string failureAction = dailyPuzzleMode ? "MENU" : "RETRY";
             if (DrawGlossyPopupButton(
                     new Rect(300f, 1110f, 480f, 140f),
-                    "RETRY",
-                    Coral,
-                    Darken(Coral, 0.24f)))
+                    failureAction,
+                    dailyPuzzleMode ? Gold : Coral,
+                    dailyPuzzleMode ? Darken(Gold, 0.25f) : Darken(Coral, 0.24f)))
             {
                 if (dailyPuzzleMode)
                 {
-                    LoadDailyPuzzle();
+                    ReturnToMenu();
                 }
                 else
                 {
@@ -1661,12 +1669,14 @@ namespace BottleBattle
             GUI.Label(
                 new Rect(240f, 1020f, 600f, 52f),
                 dailyPuzzleMode && earnedCoins == 0
-                    ? "DAILY REWARD ALREADY CLAIMED"
-                    : $"REWARD: +{earnedCoins} COINS",
+                    ? $"REWARD CLAIMED   TOTAL: {CoinWallet.Balance:N0}"
+                    : dailyPuzzleMode
+                        ? $"REWARD: +{earnedCoins}   TOTAL: {CoinWallet.Balance:N0}"
+                        : $"REWARD: +{earnedCoins} COINS",
                 depthPopupSmallStyle);
 
             string praise = dailyPuzzleMode
-                ? earnedCoins > 0 ? "100 COINS COLLECTED!" : "COMPLETED FOR TODAY!"
+                ? earnedCoins > 0 ? $"{earnedCoins} COINS COLLECTED!" : "COMPLETED FOR TODAY!"
                 : earnedStars switch
             {
                 3 => "BRILLIANT!",
@@ -1678,26 +1688,21 @@ namespace BottleBattle
                 praise,
                 depthPopupStatStyle);
 
-            if (DrawGlossyPopupButton(
+            if (!dailyPuzzleMode && DrawGlossyPopupButton(
                     new Rect(185f, 1215f, 320f, 140f),
                     "RETRY",
                     Coral,
                     Darken(Coral, 0.24f)))
             {
-                if (dailyPuzzleMode)
-                {
-                    LoadDailyPuzzle();
-                }
-                else
-                {
-                    LoadLevel(currentLevel);
-                }
+                LoadLevel(currentLevel);
                 return;
             }
 
             string nextLabel = dailyPuzzleMode || allLevelsCompleted ? "MENU" : "NEXT";
             if (DrawGlossyPopupButton(
-                    new Rect(575f, 1215f, 320f, 140f),
+                    dailyPuzzleMode
+                        ? new Rect(300f, 1215f, 480f, 140f)
+                        : new Rect(575f, 1215f, 320f, 140f),
                     nextLabel,
                     Gold,
                     Darken(Gold, 0.25f)))
