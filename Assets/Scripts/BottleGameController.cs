@@ -14,7 +14,6 @@ namespace BottleBattle
         private const float DesignHeight = 1920f;
         private const int FinalLevel = 100;
         private const string SavedLevelKey = "BottleOrder.CurrentLevel";
-        private const string TutorialCompletedKey = "BottleBattle.TutorialCompletedV2";
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
@@ -138,7 +137,8 @@ namespace BottleBattle
             earnedStars = 0;
             bestMoveCount = PlayerPrefs.GetInt(GetBestMovesKey(currentLevel), 0);
             draggedIndex = -1;
-            tutorialActive = currentLevel <= 3 && PlayerPrefs.GetInt(TutorialCompletedKey, 0) == 0;
+            // The first three levels are guided lessons every time they are played.
+            tutorialActive = currentLevel <= 3;
             tutorialStage = 0;
             tutorialResultUntil = 0f;
             currentOrder.Clear();
@@ -712,10 +712,6 @@ namespace BottleBattle
             if (tutorialActive)
             {
                 completionPopupReadyAt = Mathf.Max(Time.unscaledTime + 1.7f, tutorialResultUntil);
-                if (currentLevel == 3)
-                {
-                    PlayerPrefs.SetInt(TutorialCompletedKey, 1);
-                }
             }
 
             earnedStars = CalculateStars(moveCount, minimumMoves);
@@ -973,13 +969,14 @@ namespace BottleBattle
                 DrawRoundedPanel(new Rect(300f, 278f, 480f, 72f), Color.clear, Gold, 24);
             }
 
-            Rect panel = new(105f, 1515f, 870f, 145f);
+            Rect panel = new(105f, 1305f, 870f, 250f);
             GUI.color = Shadow;
-            DrawRoundedPanel(new Rect(panel.x + 7f, panel.y + 9f, panel.width, panel.height), Shadow, Shadow, 30);
+            DrawRoundedPanel(new Rect(panel.x + 8f, panel.y + 11f, panel.width, panel.height), Shadow, Shadow, 34);
             GUI.color = White;
-            DrawRoundedPanel(panel, Navy, Gold, 30);
-            GUI.Label(new Rect(135f, 1530f, 810f, 34f), $"TUTORIAL  {currentLevel} / 3", tutorialTitleStyle);
-            GUI.Label(new Rect(145f, 1565f, 790f, 78f), tutorialMessage, tutorialMessageStyle);
+            DrawRoundedPanel(panel, Cream, Gold, 34);
+            DrawRoundedPanel(new Rect(panel.x, panel.y, panel.width, 70f), Coral, Coral, 34);
+            GUI.Label(new Rect(135f, 1318f, 810f, 46f), $"TUTORIAL  {currentLevel} / 3", tutorialTitleStyle);
+            GUI.Label(new Rect(145f, 1382f, 790f, 150f), tutorialMessage, tutorialMessageStyle);
         }
 
         private void DrawTutorialBottle(int index, string hint)
@@ -1426,8 +1423,8 @@ namespace BottleBattle
             depthPopupStatStyle = CreateTextStyle(35, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             depthPopupSmallStyle = CreateTextStyle(27, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             depthPopupLevelStyle = CreateTextStyle(32, DeepBlue, FontStyle.Bold, TextAnchor.MiddleCenter);
-            tutorialTitleStyle = CreateTextStyle(22, Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
-            tutorialMessageStyle = CreateTextStyle(25, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialTitleStyle = CreateTextStyle(29, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            tutorialMessageStyle = CreateTextStyle(31, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             tutorialMessageStyle.wordWrap = true;
             tutorialArrowStyle = CreateTextStyle(31, Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
             tutorialHintStyle = CreateTextStyle(22, Gold, FontStyle.Bold, TextAnchor.MiddleLeft);
