@@ -674,6 +674,7 @@ namespace BottleBattle
                     (currentOrder[draggedIndex], currentOrder[droppedOnIndex]) =
                         (currentOrder[droppedOnIndex], currentOrder[draggedIndex]);
                     moveCount++;
+                    BackgroundMusicController.PlayDropSound();
                     UpdateTutorialFeedback(GetCorrectCount() - correctBeforeSwap);
                     if (tutorialActive && tutorialStage == 1)
                     {

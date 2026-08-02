@@ -3,18 +3,24 @@ using UnityEngine;
 namespace BottleBattle
 {
     /// <summary>
-    /// Keeps one looping music source alive while the player moves between screens.
+    /// Keeps one looping music source and the shared game sound effects alive
+    /// while the player moves between screens.
     /// </summary>
     public sealed class BackgroundMusicController : MonoBehaviour
     {
         private const string MusicResourcePath = "Audio/Bottle Swap Drift";
+        private const string DropSoundResourcePath = "Audio/Bottle Drop";
         private const string MusicVolumeKey = "BottleBattle.MusicVolume";
         private const string MusicMutedKey = "BottleBattle.MusicMuted";
         private const float DefaultVolume = 0.23f;
+        private const float DropSoundVolume = 0.7f;
+        private const float DropSoundDuration = 1f;
 
         private static BackgroundMusicController instance;
 
         private AudioSource musicSource;
+        private AudioSource dropSoundSource;
+        private float dropSoundStopAt = -1f;
 
         public static float Volume => PlayerPrefs.GetFloat(MusicVolumeKey, DefaultVolume);
         public static bool IsMuted => PlayerPrefs.GetInt(MusicMutedKey, 0) == 1;
@@ -47,17 +53,55 @@ namespace BottleBattle
             if (music == null)
             {
                 Debug.LogWarning($"Background music was not found at Resources/{MusicResourcePath}.");
+            }
+            else
+            {
+                musicSource = gameObject.AddComponent<AudioSource>();
+                musicSource.clip = music;
+                musicSource.loop = true;
+                musicSource.playOnAwake = false;
+                musicSource.spatialBlend = 0f;
+                musicSource.ignoreListenerPause = true;
+                ApplySavedSettings();
+                musicSource.Play();
+            }
+
+            AudioClip dropSound = Resources.Load<AudioClip>(DropSoundResourcePath);
+            if (dropSound == null)
+            {
+                Debug.LogWarning($"Drop sound was not found at Resources/{DropSoundResourcePath}.");
+            }
+            else
+            {
+                dropSoundSource = gameObject.AddComponent<AudioSource>();
+                dropSoundSource.clip = dropSound;
+                dropSoundSource.loop = false;
+                dropSoundSource.playOnAwake = false;
+                dropSoundSource.spatialBlend = 0f;
+                dropSoundSource.volume = DropSoundVolume;
+            }
+        }
+
+        private void Update()
+        {
+            if (dropSoundStopAt >= 0f && Time.unscaledTime >= dropSoundStopAt)
+            {
+                dropSoundSource?.Stop();
+                dropSoundStopAt = -1f;
+            }
+        }
+
+        public static void PlayDropSound()
+        {
+            if (instance?.dropSoundSource == null)
+            {
                 return;
             }
 
-            musicSource = gameObject.AddComponent<AudioSource>();
-            musicSource.clip = music;
-            musicSource.loop = true;
-            musicSource.playOnAwake = false;
-            musicSource.spatialBlend = 0f;
-            musicSource.ignoreListenerPause = true;
-            ApplySavedSettings();
-            musicSource.Play();
+            instance.dropSoundSource.Stop();
+            instance.dropSoundSource.time = 0f;
+            instance.dropSoundSource.Play();
+            instance.dropSoundStopAt = Time.unscaledTime + DropSoundDuration;
         }
 
         public static void SetVolume(float volume)
