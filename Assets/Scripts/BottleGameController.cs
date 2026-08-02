@@ -75,11 +75,13 @@ namespace BottleBattle
         private int currentLevel;
         private int moveCount;
         private int minimumMoves;
+        private int moveLimit;
         private int earnedStars;
         private int bestMoveCount;
         private int draggedIndex = -1;
         private Vector2 dragPosition;
         private bool completed;
+        private bool failed;
         private bool allLevelsCompleted;
         private bool tutorialActive;
         private int tutorialStage;
@@ -130,6 +132,7 @@ namespace BottleBattle
         {
             currentLevel = Mathf.Clamp(level, 1, FinalLevel);
             completed = false;
+            failed = false;
             allLevelsCompleted = false;
             completionPopupReadyAt = 0f;
             moveCount = 0;
@@ -175,6 +178,7 @@ namespace BottleBattle
 
             SetupTutorialMove();
             minimumMoves = CalculateMinimumMoves(currentOrder, targetOrder);
+            moveLimit = minimumMoves > 5 ? 15 : Mathf.Max(1, minimumMoves * 3);
         }
 
         private static int GetBottleCount(int level)
@@ -278,12 +282,16 @@ namespace BottleBattle
             DrawBackground();
             DrawHeader();
             DrawPuzzle();
-            if (tutorialActive)
+            if (tutorialActive && !failed)
             {
                 DrawTutorial();
             }
             HandleDrag(Event.current);
             DrawBottomAction();
+            if (failed)
+            {
+                DrawFailurePopup();
+            }
             if (completed && Time.unscaledTime >= completionPopupReadyAt)
             {
                 DrawDepthCompletionPopup();
@@ -345,7 +353,7 @@ namespace BottleBattle
                 correctCountStyle);
             GUI.Label(
                 new Rect(100f, 342f, 880f, 48f),
-                $"MOVES: {moveCount}     MINIMUM: {minimumMoves}",
+                $"MOVES: {moveCount} / {moveLimit}     MINIMUM: {minimumMoves}",
                 subtitleStyle);
             DrawShelfArea(
                 top: 355f,
@@ -356,8 +364,8 @@ namespace BottleBattle
 
             GUI.Label(
                 new Rect(100f, 900f, 880f, 60f),
-                completed ? "PERFECT ORDER!" : "MATCH THIS ORDER",
-                completed ? completionStyle : subtitleStyle);
+                completed ? "PERFECT ORDER!" : failed ? "OUT OF MOVES!" : "MATCH THIS ORDER",
+                completed ? completionStyle : failed ? correctCountStyle : subtitleStyle);
 
             DrawShelfArea(
                 top: 1010f,
@@ -614,7 +622,7 @@ namespace BottleBattle
 
         private void HandleDrag(Event guiEvent)
         {
-            if (completed || upperBottleRects.Count == 0)
+            if (completed || failed || upperBottleRects.Count == 0)
             {
                 return;
             }
@@ -707,6 +715,7 @@ namespace BottleBattle
             completed = OrdersMatch();
             if (!completed)
             {
+                failed = moveCount >= moveLimit;
                 return;
             }
 
@@ -1001,7 +1010,7 @@ namespace BottleBattle
 
         private void DrawBottomAction()
         {
-            if (completed || tutorialActive)
+            if (completed || failed || tutorialActive)
             {
                 return;
             }
@@ -1010,6 +1019,72 @@ namespace BottleBattle
                 new Rect(130f, 1570f, 820f, 80f),
                 "Arrange the upper bottles in the correct order",
                 subtitleStyle);
+        }
+
+        private void DrawFailurePopup()
+        {
+            GUI.color = new Color(0.03f, 0.06f, 0.13f, 0.68f);
+            GUI.DrawTexture(
+                new Rect(0f, 0f, DesignWidth, DesignHeight),
+                Texture2D.whiteTexture);
+            GUI.color = White;
+
+            Rect popupRect = new(135f, 430f, 810f, 900f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(
+                new Rect(popupRect.x + 14f, popupRect.y + 20f, popupRect.width, popupRect.height),
+                Shadow,
+                Shadow,
+                42);
+            GUI.color = White;
+            DrawRoundedPanel(popupRect, Cream, Darken(Coral, 0.15f), 42);
+
+            Rect bannerRect = new(185f, 370f, 710f, 170f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(
+                new Rect(bannerRect.x + 9f, bannerRect.y + 13f, bannerRect.width, bannerRect.height),
+                Shadow,
+                Shadow,
+                38);
+            GUI.color = White;
+            DrawRoundedPanel(bannerRect, Coral, Darken(Coral, 0.20f), 38);
+            GUI.Label(new Rect(190f, 402f, 700f, 105f), "OUT OF MOVES", depthPopupTitleStyle);
+
+            GUI.Label(
+                new Rect(235f, 585f, 610f, 66f),
+                $"LEVEL {currentLevel}",
+                popupTitleStyle);
+            GUI.Label(
+                new Rect(210f, 680f, 660f, 70f),
+                "THE BOTTLES ARE STILL OUT OF ORDER",
+                popupSmallStyle);
+
+            DrawRoundedPanel(
+                new Rect(205f, 790f, 670f, 245f),
+                Navy,
+                Darken(Navy, 0.16f),
+                32);
+            GUI.Label(
+                new Rect(240f, 825f, 600f, 70f),
+                $"USED: {moveCount} MOVES",
+                depthPopupStatStyle);
+            GUI.Label(
+                new Rect(240f, 900f, 600f, 58f),
+                $"LIMIT: {moveLimit} MOVES",
+                depthPopupSmallStyle);
+            GUI.Label(
+                new Rect(240f, 958f, 600f, 58f),
+                $"MINIMUM: {minimumMoves} MOVES",
+                depthPopupSmallStyle);
+
+            if (DrawGlossyPopupButton(
+                    new Rect(300f, 1110f, 480f, 140f),
+                    "RETRY",
+                    Coral,
+                    Darken(Coral, 0.24f)))
+            {
+                LoadLevel(currentLevel);
+            }
         }
 
         private void DrawCompletionPopup()
