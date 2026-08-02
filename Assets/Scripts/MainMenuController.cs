@@ -44,6 +44,7 @@ namespace BottleBattle
         private float statusUntil;
         private bool settingsOpen;
         private Texture2D ukFlagTexture;
+        private Texture2D coinIconTexture;
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
@@ -93,6 +94,7 @@ namespace BottleBattle
 
         private void OnEnable()
         {
+            coinIconTexture ??= Resources.Load<Texture2D>("UI/coin-icon");
             CreateStyles();
         }
 
@@ -197,27 +199,33 @@ namespace BottleBattle
 
             DrawSettingsGlyph(new Rect(54f, 56f, 126f, 112f));
 
-            Rect coinPanel = new(680f, 56f, 238f, 112f);
+            Rect coinPanel = new(648f, 56f, 378f, 112f);
             GUI.color = Shadow;
             DrawRoundedPanel(
-                new Rect(coinPanel.x + 6f, coinPanel.y + 10f, coinPanel.width, coinPanel.height),
+                new Rect(coinPanel.x + 7f, coinPanel.y + 11f, coinPanel.width, coinPanel.height),
                 Shadow,
                 Shadow,
                 34);
             GUI.color = White;
-            DrawRoundedPanel(coinPanel, Cream, CreamDark, 34);
-            GUI.color = Gold;
-            DrawCircle(new Rect(704f, 83f, 58f, 58f));
-            GUI.color = new Color(1f, 1f, 1f, 0.45f);
-            DrawCircle(new Rect(715f, 91f, 17f, 17f));
+            DrawRoundedPanel(coinPanel, Navy, Darken(Navy, 0.12f), 34);
+            GUI.color = new Color(1f, 1f, 1f, 0.13f);
+            DrawRoundedPanel(new Rect(668f, 70f, 338f, 10f), GUI.color, Color.clear, 5);
             GUI.color = White;
+            if (coinIconTexture != null)
+            {
+                GUI.DrawTexture(
+                    new Rect(668f, 72f, 80f, 80f),
+                    coinIconTexture,
+                    ScaleMode.ScaleToFit,
+                    true);
+            }
             GUI.Label(
-                new Rect(770f, 71f, 132f, 82f),
+                new Rect(752f, 71f, 158f, 82f),
                 CoinWallet.Balance.ToString("N0"),
                 coinBalanceText);
 
             if (DrawRoundedButton(
-                    new Rect(934f, 56f, 92f, 112f),
+                    new Rect(920f, 70f, 90f, 84f),
                     "+",
                     Gold,
                     Darken(Gold, 0.20f),
@@ -853,7 +861,7 @@ namespace BottleBattle
             titleCoral = CreateTextStyle(116, Coral, FontStyle.Bold, TextAnchor.MiddleCenter);
             titleNavy = CreateTextStyle(112, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             topBarText = CreateTextStyle(40, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
-            coinBalanceText = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            coinBalanceText = CreateTextStyle(31, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             buttonText = CreateTextStyle(52, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             secondaryButtonText = CreateTextStyle(39, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleBrandText = CreateTextStyle(12, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);

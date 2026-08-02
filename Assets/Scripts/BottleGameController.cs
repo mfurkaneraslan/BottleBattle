@@ -49,6 +49,7 @@ namespace BottleBattle
 
         private Font uiFont;
         private Texture2D completionStarTexture;
+        private Texture2D coinIconTexture;
         private GUIStyle headerStyle;
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -128,6 +129,7 @@ namespace BottleBattle
         private void OnEnable()
         {
             completionStarTexture ??= Resources.Load<Texture2D>("UI/completion-star");
+            coinIconTexture ??= Resources.Load<Texture2D>("UI/coin-icon");
             CreateStyles();
         }
 
@@ -387,9 +389,7 @@ namespace BottleBattle
 
                 DrawBulbIcon(hintButton);
                 DrawRoundedPanel(new Rect(820f, 162f, 212f, 54f), Navy, Darken(Navy, 0.12f), 22);
-                GUI.color = Gold;
-                DrawCircle(new Rect(836f, 171f, 36f, 36f));
-                GUI.color = White;
+                DrawCoinIcon(new Rect(832f, 168f, 42f, 42f));
                 GUI.Label(new Rect(878f, 166f, 140f, 44f), CoinWallet.Balance.ToString("N0"), hintCoinStyle);
             }
 
@@ -1141,6 +1141,20 @@ namespace BottleBattle
             GUI.color = White;
         }
 
+        private void DrawCoinIcon(Rect rect)
+        {
+            GUI.color = White;
+            if (coinIconTexture != null)
+            {
+                GUI.DrawTexture(rect, coinIconTexture, ScaleMode.ScaleToFit, true);
+                return;
+            }
+
+            GUI.color = Gold;
+            DrawCircle(rect);
+            GUI.color = White;
+        }
+
         private void DrawHintPopup()
         {
             GUI.color = new Color(0.03f, 0.06f, 0.13f, 0.70f);
@@ -1162,9 +1176,7 @@ namespace BottleBattle
             }
 
             DrawRoundedPanel(new Rect(330f, 430f, 420f, 72f), Navy, Darken(Navy, 0.12f), 24);
-            GUI.color = Gold;
-            DrawCircle(new Rect(354f, 447f, 38f, 38f));
-            GUI.color = White;
+            DrawCoinIcon(new Rect(350f, 443f, 46f, 46f));
             GUI.Label(new Rect(408f, 440f, 310f, 54f), CoinWallet.Balance.ToString("N0"), hintCoinStyle);
 
             bool weakerHintsUnavailable = fullRevealHintPurchased;
