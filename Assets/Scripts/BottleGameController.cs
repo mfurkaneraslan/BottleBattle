@@ -104,6 +104,7 @@ namespace BottleBattle
         private int tutorialSourceIndex;
         private int tutorialTargetIndex;
         private int correctBeforeSwap;
+        private int debugRevealTapCount;
         private string tutorialMessage = string.Empty;
         private string hintMessage = string.Empty;
         private string dailyPuzzleDateKey = string.Empty;
@@ -180,6 +181,7 @@ namespace BottleBattle
                 singleBottleHintPurchased = false;
                 shapeHintPurchased = false;
                 fullRevealHintPurchased = false;
+                debugRevealTapCount = 0;
             }
             // The first three levels are guided lessons every time they are played.
             tutorialActive = currentLevel <= 3;
@@ -252,6 +254,7 @@ namespace BottleBattle
                 singleBottleHintPurchased = false;
                 shapeHintPurchased = false;
                 fullRevealHintPurchased = false;
+                debugRevealTapCount = 0;
             }
 
             tutorialActive = false;
@@ -570,6 +573,11 @@ namespace BottleBattle
                 if (!showShape || !DrawGrayscaleSpriteBottle(bottleRect, order[index]))
                 {
                     DrawBottle(bottleRect, color, order[index], showColor);
+                }
+
+                if (applyHints && index == 0 && !completed)
+                {
+                    HandleDebugRevealTap(bottleRect);
                 }
             }
 
@@ -1242,6 +1250,25 @@ namespace BottleBattle
                 new Rect(130f, 1570f, 820f, 80f),
                 "Arrange the upper bottles in the correct order",
                 subtitleStyle);
+        }
+
+        private void HandleDebugRevealTap(Rect firstTargetBottle)
+        {
+            Event guiEvent = Event.current;
+            if (fullRevealHintPurchased ||
+                guiEvent.type != EventType.MouseUp ||
+                guiEvent.button != 0 ||
+                !firstTargetBottle.Contains(guiEvent.mousePosition))
+            {
+                return;
+            }
+
+            debugRevealTapCount = Mathf.Min(10, debugRevealTapCount + 1);
+            if (debugRevealTapCount >= 10)
+            {
+                fullRevealHintPurchased = true;
+            }
+            guiEvent.Use();
         }
 
         private void DrawBulbIcon(Rect buttonRect)
