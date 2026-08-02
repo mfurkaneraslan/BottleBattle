@@ -20,6 +20,10 @@ namespace BottleBattle
 
         private AudioSource musicSource;
         private AudioSource dropSoundSource;
+        private AudioClip musicClip;
+        private AudioClip dropSoundClip;
+        private bool musicStarted;
+        private bool dropSoundPending;
         private float dropSoundStopAt = -1f;
 
         public static float Volume => PlayerPrefs.GetFloat(MusicVolumeKey, DefaultVolume);
@@ -49,41 +53,60 @@ namespace BottleBattle
             instance = this;
             DontDestroyOnLoad(gameObject);
 
-            AudioClip music = Resources.Load<AudioClip>(MusicResourcePath);
-            if (music == null)
+            // This IMGUI-only scene does not need a Camera, so it also has no
+            // automatically-created AudioListener. AudioSources are silent without one.
+            if (FindAnyObjectByType<AudioListener>() == null)
+            {
+                gameObject.AddComponent<AudioListener>();
+            }
+
+            musicClip = Resources.Load<AudioClip>(MusicResourcePath);
+            if (musicClip == null)
             {
                 Debug.LogWarning($"Background music was not found at Resources/{MusicResourcePath}.");
             }
             else
             {
                 musicSource = gameObject.AddComponent<AudioSource>();
-                musicSource.clip = music;
+                musicSource.clip = musicClip;
                 musicSource.loop = true;
                 musicSource.playOnAwake = false;
                 musicSource.spatialBlend = 0f;
                 musicSource.ignoreListenerPause = true;
                 ApplySavedSettings();
-                musicSource.Play();
+                musicClip.LoadAudioData();
             }
 
-            AudioClip dropSound = Resources.Load<AudioClip>(DropSoundResourcePath);
-            if (dropSound == null)
+            dropSoundClip = Resources.Load<AudioClip>(DropSoundResourcePath);
+            if (dropSoundClip == null)
             {
                 Debug.LogWarning($"Drop sound was not found at Resources/{DropSoundResourcePath}.");
             }
             else
             {
                 dropSoundSource = gameObject.AddComponent<AudioSource>();
-                dropSoundSource.clip = dropSound;
+                dropSoundSource.clip = dropSoundClip;
                 dropSoundSource.loop = false;
                 dropSoundSource.playOnAwake = false;
                 dropSoundSource.spatialBlend = 0f;
                 dropSoundSource.volume = DropSoundVolume;
+                dropSoundClip.LoadAudioData();
             }
         }
 
         private void Update()
         {
+            if (!musicStarted && musicSource != null && musicClip.loadState == AudioDataLoadState.Loaded)
+            {
+                musicSource.Play();
+                musicStarted = true;
+            }
+
+            if (dropSoundPending && dropSoundClip != null && dropSoundClip.loadState == AudioDataLoadState.Loaded)
+            {
+                StartDropSound();
+            }
+
             if (dropSoundStopAt >= 0f && Time.unscaledTime >= dropSoundStopAt)
             {
                 dropSoundSource?.Stop();
@@ -98,10 +121,23 @@ namespace BottleBattle
                 return;
             }
 
-            instance.dropSoundSource.Stop();
-            instance.dropSoundSource.time = 0f;
-            instance.dropSoundSource.Play();
-            instance.dropSoundStopAt = Time.unscaledTime + DropSoundDuration;
+            if (instance.dropSoundClip.loadState != AudioDataLoadState.Loaded)
+            {
+                instance.dropSoundPending = true;
+                instance.dropSoundClip.LoadAudioData();
+                return;
+            }
+
+            instance.StartDropSound();
+        }
+
+        private void StartDropSound()
+        {
+            dropSoundPending = false;
+            dropSoundSource.Stop();
+            dropSoundSource.time = 0f;
+            dropSoundSource.Play();
+            dropSoundStopAt = Time.unscaledTime + DropSoundDuration;
         }
 
         public static void SetVolume(float volume)
