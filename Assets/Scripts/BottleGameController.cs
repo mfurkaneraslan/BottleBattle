@@ -287,9 +287,9 @@ namespace BottleBattle
             while ((OrdersMatch() || GetCorrectCount() > maxStartingCorrect) && shuffleAttempts < 128);
 
             minimumMoves = CalculateMinimumMoves(currentOrder, targetOrder);
-            // Daily puzzles need enough room for every star tier. A fixed 15-move
-            // cap could end a minimum-9 puzzle before its one-star range began.
-            moveLimit = Mathf.Max(1, minimumMoves * 3);
+            // Larger daily puzzles get a wider one-star recovery range.
+            int dailyMoveMultiplier = minimumMoves > 7 ? 4 : 3;
+            moveLimit = Mathf.Max(1, minimumMoves * dailyMoveMultiplier);
         }
 
         private static int GetBottleCount(int level)
