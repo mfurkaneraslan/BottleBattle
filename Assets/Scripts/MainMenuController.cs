@@ -26,6 +26,7 @@ namespace BottleBattle
         private GUIStyle titleCoral;
         private GUIStyle titleNavy;
         private GUIStyle topBarText;
+        private GUIStyle coinBalanceText;
         private GUIStyle buttonText;
         private GUIStyle secondaryButtonText;
         private GUIStyle bottleBrandText;
@@ -183,7 +184,7 @@ namespace BottleBattle
         private void DrawTopBar()
         {
             if (DrawRoundedButton(
-                    new Rect(900f, 56f, 126f, 112f),
+                    new Rect(54f, 56f, 126f, 112f),
                     string.Empty,
                     Cream,
                     CreamDark,
@@ -194,7 +195,36 @@ namespace BottleBattle
                 return;
             }
 
-            DrawSettingsGlyph(new Rect(900f, 56f, 126f, 112f));
+            DrawSettingsGlyph(new Rect(54f, 56f, 126f, 112f));
+
+            Rect coinPanel = new(680f, 56f, 238f, 112f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(
+                new Rect(coinPanel.x + 6f, coinPanel.y + 10f, coinPanel.width, coinPanel.height),
+                Shadow,
+                Shadow,
+                34);
+            GUI.color = White;
+            DrawRoundedPanel(coinPanel, Cream, CreamDark, 34);
+            GUI.color = Gold;
+            DrawCircle(new Rect(704f, 83f, 58f, 58f));
+            GUI.color = new Color(1f, 1f, 1f, 0.45f);
+            DrawCircle(new Rect(715f, 91f, 17f, 17f));
+            GUI.color = White;
+            GUI.Label(
+                new Rect(770f, 71f, 132f, 82f),
+                CoinWallet.Balance.ToString("N0"),
+                coinBalanceText);
+
+            if (DrawRoundedButton(
+                    new Rect(934f, 56f, 92f, 112f),
+                    "+",
+                    Gold,
+                    Darken(Gold, 0.20f),
+                    topBarText))
+            {
+                ShowStatus("COIN SHOP COMING SOON");
+            }
         }
 
         private void DrawSettingsPage()
@@ -823,6 +853,7 @@ namespace BottleBattle
             titleCoral = CreateTextStyle(116, Coral, FontStyle.Bold, TextAnchor.MiddleCenter);
             titleNavy = CreateTextStyle(112, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             topBarText = CreateTextStyle(40, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            coinBalanceText = CreateTextStyle(29, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             buttonText = CreateTextStyle(52, White, FontStyle.Bold, TextAnchor.MiddleCenter);
             secondaryButtonText = CreateTextStyle(39, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleBrandText = CreateTextStyle(12, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
