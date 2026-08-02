@@ -33,9 +33,16 @@ namespace BottleBattle
         private GUIStyle bottleFooterText;
         private GUIStyle bottleMarkText;
         private GUIStyle hintText;
+        private GUIStyle settingsTitleText;
+        private GUIStyle settingLabelText;
+        private GUIStyle settingValueText;
+        private GUIStyle languageText;
+        private GUIStyle settingsHintText;
 
         private string statusMessage = string.Empty;
         private float statusUntil;
+        private bool settingsOpen;
+        private Texture2D ukFlagTexture;
 
         private static readonly Color Cream = Html("#FFF8E8");
         private static readonly Color CreamDark = Html("#F5E5C2");
@@ -143,11 +150,18 @@ namespace BottleBattle
                 new Vector3(scale, scale, 1f));
 
             DrawBackground();
-            DrawTopBar();
-            DrawTitle();
-            DrawBottleShowcase();
-            DrawActions();
-            DrawStatus();
+            if (settingsOpen)
+            {
+                DrawSettingsPage();
+            }
+            else
+            {
+                DrawTopBar();
+                DrawTitle();
+                DrawBottleShowcase();
+                DrawActions();
+                DrawStatus();
+            }
 
             GUI.matrix = oldMatrix;
             GUI.color = oldColor;
@@ -169,27 +183,160 @@ namespace BottleBattle
         private void DrawTopBar()
         {
             if (DrawRoundedButton(
-                    new Rect(54f, 56f, 126f, 112f),
-                    "≡",
+                    new Rect(900f, 56f, 126f, 112f),
+                    string.Empty,
                     Cream,
                     CreamDark,
                     topBarText))
             {
                 SettingsRequested?.Invoke();
-                ShowStatus("Settings coming soon");
+                settingsOpen = true;
+                return;
             }
 
-            DrawRoundedPanel(new Rect(715f, 67f, 310f, 92f), Cream, CreamDark);
-            GUI.color = Gold;
-            DrawCircle(new Rect(734f, 79f, 68f, 68f));
-            GUI.color = White;
-            GUI.Label(new Rect(740f, 83f, 60f, 58f), "₺", topBarText);
-            GUI.Label(new Rect(815f, 82f, 125f, 58f), "1250", topBarText);
+            DrawSettingsGlyph(new Rect(900f, 56f, 126f, 112f));
+        }
 
-            GUI.color = Lime;
-            DrawCircle(new Rect(946f, 84f, 56f, 56f));
+        private void DrawSettingsPage()
+        {
+            if (DrawRoundedButton(
+                    new Rect(54f, 56f, 126f, 112f),
+                    "<",
+                    Cream,
+                    CreamDark,
+                    topBarText))
+            {
+                settingsOpen = false;
+                return;
+            }
+
+            GUI.Label(new Rect(210f, 58f, 660f, 110f), "SETTINGS", settingsTitleText);
+
+            DrawVolumeSetting(
+                new Rect(90f, 290f, 900f, 330f),
+                "MUSIC VOLUME",
+                Coral,
+                BackgroundMusicController.Volume,
+                BackgroundMusicController.SetVolume);
+
+            DrawVolumeSetting(
+                new Rect(90f, 675f, 900f, 330f),
+                "SOUND EFFECTS",
+                Cyan,
+                BackgroundMusicController.SoundEffectsVolume,
+                BackgroundMusicController.SetSoundEffectsVolume);
+
+            Rect languageCard = new(90f, 1060f, 900f, 390f);
+            GUI.color = Shadow;
+            DrawRoundedPanel(
+                new Rect(languageCard.x + 8f, languageCard.y + 10f, languageCard.width, languageCard.height),
+                Shadow,
+                Shadow,
+                36);
             GUI.color = White;
-            GUI.Label(new Rect(949f, 84f, 50f, 48f), "+", topBarText);
+            DrawRoundedPanel(languageCard, White, CreamDark, 36);
+            GUI.Label(
+                new Rect(languageCard.x + 55f, languageCard.y + 32f, 790f, 64f),
+                "LANGUAGE",
+                settingLabelText);
+
+            Rect selector = new(languageCard.x + 55f, languageCard.y + 120f, 790f, 150f);
+            DrawRoundedPanel(selector, Cream, CreamDark, 28);
+            GUI.DrawTexture(
+                new Rect(selector.x + 34f, selector.y + 26f, 142f, 96f),
+                GetUkFlagTexture(),
+                ScaleMode.StretchToFill,
+                true);
+            GUI.Label(
+                new Rect(selector.x + 205f, selector.y + 27f, 430f, 92f),
+                "ENGLISH",
+                languageText);
+            GUI.color = Lime;
+            DrawCircle(new Rect(selector.x + 687f, selector.y + 46f, 58f, 58f));
+            GUI.color = White;
+            GUI.Label(new Rect(selector.x + 687f, selector.y + 44f, 58f, 58f), "OK", settingsHintText);
+
+            GUI.Label(
+                new Rect(languageCard.x + 60f, languageCard.y + 296f, 780f, 54f),
+                "MORE LANGUAGES COMING SOON",
+                settingsHintText);
+
+            GUI.Label(
+                new Rect(130f, 1575f, 820f, 70f),
+                "YOUR SETTINGS ARE SAVED AUTOMATICALLY",
+                settingsHintText);
+        }
+
+        private void DrawVolumeSetting(
+            Rect card,
+            string label,
+            Color accent,
+            float value,
+            Action<float> setValue)
+        {
+            GUI.color = Shadow;
+            DrawRoundedPanel(
+                new Rect(card.x + 8f, card.y + 10f, card.width, card.height),
+                Shadow,
+                Shadow,
+                36);
+            GUI.color = White;
+            DrawRoundedPanel(card, White, CreamDark, 36);
+            GUI.Label(new Rect(card.x + 55f, card.y + 34f, 570f, 64f), label, settingLabelText);
+            GUI.Label(
+                new Rect(card.x + 650f, card.y + 34f, 195f, 64f),
+                $"{Mathf.RoundToInt(value * 100f)}%",
+                settingValueText);
+
+            Rect track = new(card.x + 105f, card.y + 190f, 690f, 30f);
+            Rect hitArea = new(track.x - 30f, track.y - 42f, track.width + 60f, 114f);
+            Event guiEvent = Event.current;
+            if ((guiEvent.type == EventType.MouseDown || guiEvent.type == EventType.MouseDrag) &&
+                guiEvent.button == 0 &&
+                hitArea.Contains(guiEvent.mousePosition))
+            {
+                value = Mathf.Clamp01((guiEvent.mousePosition.x - track.x) / track.width);
+                setValue(value);
+                guiEvent.Use();
+            }
+
+            DrawRoundedPanel(track, CreamDark, Darken(CreamDark, 0.08f), 15);
+            if (value > 0.001f)
+            {
+                DrawRoundedPanel(
+                    new Rect(track.x, track.y, Mathf.Max(18f, track.width * value), track.height),
+                    accent,
+                    Darken(accent, 0.16f),
+                    15);
+            }
+
+            float knobX = track.x + track.width * value;
+            GUI.color = Shadow;
+            DrawCircle(new Rect(knobX - 25f, track.center.y - 23f, 60f, 60f));
+            GUI.color = White;
+            DrawCircle(new Rect(knobX - 30f, track.center.y - 30f, 60f, 60f));
+            GUI.color = accent;
+            DrawCircle(new Rect(knobX - 20f, track.center.y - 20f, 40f, 40f));
+            GUI.color = White;
+
+            GUI.Label(new Rect(track.x - 72f, track.y - 19f, 55f, 66f), "-", settingValueText);
+            GUI.Label(new Rect(track.xMax + 18f, track.y - 19f, 55f, 66f), "+", settingValueText);
+        }
+
+        private void DrawSettingsGlyph(Rect buttonRect)
+        {
+            float left = buttonRect.x + 31f;
+            float width = buttonRect.width - 62f;
+            float[] offsets = { 30f, 55f, 80f };
+            float[] knobs = { 0.30f, 0.72f, 0.46f };
+            GUI.color = Navy;
+            for (int index = 0; index < offsets.Length; index++)
+            {
+                float y = buttonRect.y + offsets[index];
+                GUI.DrawTexture(new Rect(left, y, width, 5f), Texture2D.whiteTexture);
+                DrawCircle(new Rect(left + width * knobs[index] - 7f, y - 5f, 15f, 15f));
+            }
+            GUI.color = White;
         }
 
         private void DrawTitle()
@@ -587,6 +734,65 @@ namespace BottleBattle
             return texture;
         }
 
+        private Texture2D GetUkFlagTexture()
+        {
+            if (ukFlagTexture != null)
+            {
+                return ukFlagTexture;
+            }
+
+            const int width = 150;
+            const int height = 96;
+            Color flagNavy = Html("#173A74");
+            Color flagRed = Html("#D62D3C");
+            var pixels = new Color[width * height];
+
+            for (int y = 0; y < height; y++)
+            {
+                float normalizedY = y / (height - 1f);
+                for (int x = 0; x < width; x++)
+                {
+                    float normalizedX = x / (width - 1f);
+                    float firstDiagonal = Mathf.Abs(normalizedY - normalizedX);
+                    float secondDiagonal = Mathf.Abs(normalizedY - (1f - normalizedX));
+                    Color pixel = flagNavy;
+
+                    if (firstDiagonal < 0.13f || secondDiagonal < 0.13f)
+                    {
+                        pixel = White;
+                    }
+                    if (firstDiagonal < 0.045f || secondDiagonal < 0.045f)
+                    {
+                        pixel = flagRed;
+                    }
+                    if (Mathf.Abs(normalizedX - 0.5f) < 0.13f ||
+                        Mathf.Abs(normalizedY - 0.5f) < 0.19f)
+                    {
+                        pixel = White;
+                    }
+                    if (Mathf.Abs(normalizedX - 0.5f) < 0.065f ||
+                        Mathf.Abs(normalizedY - 0.5f) < 0.09f)
+                    {
+                        pixel = flagRed;
+                    }
+
+                    pixels[y * width + x] = pixel;
+                }
+            }
+
+            ukFlagTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "English-Language-Flag",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            ukFlagTexture.SetPixels(pixels);
+            ukFlagTexture.Apply(false, true);
+            generatedTextures.Add(ukFlagTexture);
+            return ukFlagTexture;
+        }
+
         private static GUIStyle MergeBackground(GUIStyle textStyle, GUIStyle background)
         {
             var style = new GUIStyle(textStyle)
@@ -624,6 +830,11 @@ namespace BottleBattle
             bottleFooterText = CreateTextStyle(10, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
             bottleMarkText = CreateTextStyle(1, Color.clear, FontStyle.Normal, TextAnchor.MiddleCenter);
             hintText = CreateTextStyle(27, White, FontStyle.Bold, TextAnchor.MiddleCenter);
+            settingsTitleText = CreateTextStyle(58, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            settingLabelText = CreateTextStyle(35, Navy, FontStyle.Bold, TextAnchor.MiddleLeft);
+            settingValueText = CreateTextStyle(32, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
+            languageText = CreateTextStyle(39, Navy, FontStyle.Bold, TextAnchor.MiddleLeft);
+            settingsHintText = CreateTextStyle(22, Navy, FontStyle.Bold, TextAnchor.MiddleCenter);
         }
 
         private GUIStyle CreateTextStyle(

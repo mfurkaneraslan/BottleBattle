@@ -12,8 +12,9 @@ namespace BottleBattle
         private const string DropSoundResourcePath = "Audio/Bottle Drop";
         private const string MusicVolumeKey = "BottleBattle.MusicVolume";
         private const string MusicMutedKey = "BottleBattle.MusicMuted";
+        private const string SoundEffectsVolumeKey = "BottleBattle.SoundEffectsVolume";
         private const float DefaultVolume = 0.23f;
-        private const float DropSoundVolume = 0.7f;
+        private const float DefaultSoundEffectsVolume = 0.7f;
         private const float DropSoundStartTime = 0.36f;
         private const float DropSoundDuration = 0.24f;
 
@@ -28,6 +29,8 @@ namespace BottleBattle
         private float dropSoundStopAt = -1f;
 
         public static float Volume => PlayerPrefs.GetFloat(MusicVolumeKey, DefaultVolume);
+        public static float SoundEffectsVolume =>
+            PlayerPrefs.GetFloat(SoundEffectsVolumeKey, DefaultSoundEffectsVolume);
         public static bool IsMuted => PlayerPrefs.GetInt(MusicMutedKey, 0) == 1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -90,7 +93,7 @@ namespace BottleBattle
                 dropSoundSource.loop = false;
                 dropSoundSource.playOnAwake = false;
                 dropSoundSource.spatialBlend = 0f;
-                dropSoundSource.volume = DropSoundVolume;
+                dropSoundSource.volume = SoundEffectsVolume;
                 dropSoundClip.LoadAudioData();
             }
         }
@@ -161,6 +164,18 @@ namespace BottleBattle
             if (instance?.musicSource != null)
             {
                 instance.musicSource.mute = muted;
+            }
+        }
+
+        public static void SetSoundEffectsVolume(float volume)
+        {
+            float clampedVolume = Mathf.Clamp01(volume);
+            PlayerPrefs.SetFloat(SoundEffectsVolumeKey, clampedVolume);
+            PlayerPrefs.Save();
+
+            if (instance?.dropSoundSource != null)
+            {
+                instance.dropSoundSource.volume = clampedVolume;
             }
         }
 
